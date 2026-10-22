@@ -1,4 +1,5 @@
 
+import { useEffect, useState } from 'react'
 import Table from './components/Table.jsx'
 
 const headers = [
@@ -7,41 +8,40 @@ const headers = [
   { name: 'country', label: 'Country' },
 ]
 
-const companies = [
-  {
-    company: 'Alfreds Futterkiste',
-    contact: 'Maria Anders',
-    country: 'Germany',
-  },
-  {
-    company: 'Centro comercial Moctezuma',
-    contact: 'Francisco Chang',
-    country: 'Mexico',
-  },
-  {
-    company: 'Ernst Handel',
-    contact: 'Roland Mendel',
-    country: 'Austria',
-  },
-  {
-    company: 'Island Trading',
-    contact: 'Helen Bennett',
-    country: 'UK',
-  },
-  {
-    company: 'Laughing Bacchus Winecellars',
-    contact: 'Yoshi Tannamuri',
-    country: 'Canada',
-  },
-  {
-    company: 'Magazzini Alimentari Riuniti',
-    contact: 'Giovanni Rovelli',
-    country: 'Italy',
-  },
-]
-
 function App() {
-  return <Table headers={headers} data={companies} />
+  const [data, setData] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(null)
+
+  useEffect(() => {
+    async function fetchCompanies() {
+      try {
+        const response = await fetch('/companies.json')
+        if (!response.ok) {
+          throw new Error(`Request failed with status ${response.status}`)
+        }
+
+        setData(await response.json())
+      } catch (error) {
+        console.error('Failed to fetch company data:', error)
+        setError('Unable to load company data.')
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    fetchCompanies()
+  }, [])
+
+  if (loading) {
+    return <p>Loading...</p>
+  }
+
+  if (error) {
+    return <p>{error}</p>
+  }
+
+  return <Table headers={headers} data={data} />
 }
 
 export default App
