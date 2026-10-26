@@ -1,5 +1,5 @@
 
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import Table from './components/Table.jsx'
 
 const headers = [
@@ -12,6 +12,33 @@ function App() {
   const [data, setData] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
+  const [searchText, setSearchText] = useState('')
+  const [sort, setSort] = useState({
+    column: headers[0].name,
+    direction: 'desc',
+  })
+
+  const visibleData = useMemo(() => {
+    const normalizedSearch = searchText.trim().toLocaleLowerCase()
+
+    return data
+      .filter((item) =>
+        headers.some((header) =>
+          String(item[header.name] ?? '')
+            .toLocaleLowerCase()
+            .includes(normalizedSearch),
+        ),
+      )
+      .sort((first, second) => {
+        const comparison = String(first[sort.column] ?? '').localeCompare(
+          String(second[sort.column] ?? ''),
+          undefined,
+          { numeric: true, sensitivity: 'base' },
+        )
+
+        return sort.direction === 'asc' ? comparison : -comparison
+      })
+  }, [data, searchText, sort])
 
   useEffect(() => {
     async function fetchCompanies() {
@@ -41,7 +68,16 @@ function App() {
     return <p>{error}</p>
   }
 
-  return <Table headers={headers} data={data} />
+  return (
+    <Table
+      headers={headers}
+      data={visibleData}
+      searchText={searchText}
+      onSearchTextChange={setSearchText}
+      sort={sort}
+      onSortChange={setSort}
+    />
+  )
 }
 
 export default App
