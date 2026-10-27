@@ -1,4 +1,6 @@
 
+import PropTypes from 'prop-types'
+
 function Table({
   headers,
   data,
@@ -106,6 +108,24 @@ function Table({
       </div>
     </main>
   )
+}
+
+Table.propTypes = {
+  headers: PropTypes.arrayOf(
+    PropTypes.shape({
+      name: PropTypes.string.isRequired,
+      label: PropTypes.string.isRequired,
+    }).isRequired,
+  ).isRequired,
+  data: PropTypes.arrayOf(PropTypes.objectOf(PropTypes.node).isRequired)
+    .isRequired,
+  searchText: PropTypes.string.isRequired,
+  onSearchTextChange: PropTypes.func.isRequired,
+  sort: PropTypes.shape({
+    column: PropTypes.string.isRequired,
+    direction: PropTypes.oneOf(['asc', 'desc']).isRequired,
+  }).isRequired,
+  onSortChange: PropTypes.func.isRequired,
 }
 
 export default Table

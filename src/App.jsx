@@ -1,6 +1,13 @@
 
 import { useEffect, useMemo, useState } from 'react'
+import { useDispatch, useSelector } from 'react-redux'
 import Table from './components/Table.jsx'
+import {
+  fetchCompanies,
+  selectCompaniesData,
+  selectCompaniesError,
+  selectCompaniesStatus,
+} from './store/companiesSlice.js'
 
 const headers = [
   { name: 'company', label: 'Company' },
@@ -9,9 +16,10 @@ const headers = [
 ]
 
 function App() {
-  const [data, setData] = useState([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState(null)
+  const dispatch = useDispatch()
+  const data = useSelector(selectCompaniesData)
+  const status = useSelector(selectCompaniesStatus)
+  const error = useSelector(selectCompaniesError)
   const [searchText, setSearchText] = useState('')
   const [sort, setSort] = useState({
     column: headers[0].name,
@@ -41,31 +49,15 @@ function App() {
   }, [data, searchText, sort])
 
   useEffect(() => {
-    async function fetchCompanies() {
-      try {
-        const response = await fetch('/companies.json')
-        if (!response.ok) {
-          throw new Error(`Request failed with status ${response.status}`)
-        }
+    dispatch(fetchCompanies())
+  }, [dispatch])
 
-        setData(await response.json())
-      } catch (error) {
-        console.error('Failed to fetch company data:', error)
-        setError('Unable to load company data.')
-      } finally {
-        setLoading(false)
-      }
-    }
-
-    fetchCompanies()
-  }, [])
-
-  if (loading) {
-    return <p>Loading...</p>
+  if (status === 'idle' || status === 'loading') {
+    return <p className="p-8 text-slate-600" role="status">Loading companies...</p>
   }
 
   if (error) {
-    return <p>{error}</p>
+    return <p className="p-8 text-red-700" role="alert">{error}</p>
   }
 
   return (
