@@ -1,6 +1,7 @@
 
 import { useEffect, useMemo, useState } from 'react'
 import { useDispatch, useSelector } from 'react-redux'
+import { AT, CA, DE, GB, IT, MX } from 'country-flag-icons/react/3x2'
 import Table from './components/Table.jsx'
 import {
   fetchCompanies,
@@ -9,13 +10,41 @@ import {
   selectCompaniesStatus,
 } from './store/companiesSlice.js'
 
+const countryFlags = {
+  Austria: AT,
+  Canada: CA,
+  Germany: DE,
+  Italy: IT,
+  Mexico: MX,
+  UK: GB,
+}
+
 const headers = [
   { name: 'company', label: 'Company' },
   { name: 'contact', label: 'Contact' },
-  { name: 'country', label: 'Country' },
+  {
+    name: 'country',
+    label: 'Country',
+    render: (item) => {
+      const Flag = countryFlags[item.country]
+
+      return (
+        <span className="inline-flex items-center gap-2">
+          {Flag && (
+            <Flag
+              title={`${item.country} flag`}
+              className="h-4 w-6 rounded-sm"
+            />
+          )}
+          {item.country}
+        </span>
+      )
+    },
+  },
 ]
 
 function App() {
+
   const dispatch = useDispatch()
   const data = useSelector(selectCompaniesData)
   const status = useSelector(selectCompaniesStatus)

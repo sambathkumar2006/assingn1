@@ -97,7 +97,7 @@ function Table({
                       key={header.name}
                       className="px-6 py-4 text-slate-600"
                     >
-                      {item[header.name]}
+                      {header.render ? header.render(item) : item[header.name]}
                     </td>
                   ))}
                 </tr>
@@ -115,6 +115,7 @@ Table.propTypes = {
     PropTypes.shape({
       name: PropTypes.string.isRequired,
       label: PropTypes.string.isRequired,
+      render: PropTypes.func,
     }).isRequired,
   ).isRequired,
   data: PropTypes.arrayOf(PropTypes.objectOf(PropTypes.node).isRequired)
