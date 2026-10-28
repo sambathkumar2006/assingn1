@@ -20,8 +20,8 @@ const countryFlags = {
 }
 
 const headers = [
-  { name: 'company', label: 'Company' },
-  { name: 'contact', label: 'Contact' },
+  { name: 'company', label: 'Company', sortable: true },
+  { name: 'contact', label: 'Contact', sortable: true },
   {
     name: 'country',
     label: 'Country',
@@ -50,10 +50,6 @@ function App() {
   const status = useSelector(selectCompaniesStatus)
   const error = useSelector(selectCompaniesError)
   const [searchText, setSearchText] = useState('')
-  const [sort, setSort] = useState({
-    column: headers[0].name,
-    direction: 'desc',
-  })
 
   const visibleData = useMemo(() => {
     const normalizedSearch = searchText.trim().toLocaleLowerCase()
@@ -66,16 +62,7 @@ function App() {
             .includes(normalizedSearch),
         ),
       )
-      .sort((first, second) => {
-        const comparison = String(first[sort.column] ?? '').localeCompare(
-          String(second[sort.column] ?? ''),
-          undefined,
-          { numeric: true, sensitivity: 'base' },
-        )
-
-        return sort.direction === 'asc' ? comparison : -comparison
-      })
-  }, [data, searchText, sort])
+  }, [data, searchText])
 
   useEffect(() => {
     dispatch(fetchCompanies())
@@ -95,8 +82,6 @@ function App() {
       data={visibleData}
       searchText={searchText}
       onSearchTextChange={setSearchText}
-      sort={sort}
-      onSortChange={setSort}
     />
   )
 }
