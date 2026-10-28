@@ -1,7 +1,28 @@
 
 import { useEffect, useMemo, useState } from 'react'
 import { useDispatch, useSelector } from 'react-redux'
-import { AT, CA, DE, GB, IT, MX } from 'country-flag-icons/react/3x2'
+import {
+  AE,
+  AU,
+  BR,
+  CA,
+  CN,
+  DE,
+  ES,
+  FR,
+  GB,
+  IE,
+  IN,
+  IT,
+  JP,
+  KR,
+  MX,
+  NL,
+  SE,
+  SG,
+  US,
+  ZA,
+} from 'country-flag-icons/react/3x2'
 import Table from './components/Table.jsx'
 import {
   fetchCompanies,
@@ -10,14 +31,30 @@ import {
   selectCompaniesStatus,
 } from './store/companiesSlice.js'
 
-const countryFlags = {
-  Austria: AT,
-  Canada: CA,
-  Germany: DE,
-  Italy: IT,
-  Mexico: MX,
-  UK: GB,
+const countries = {
+  ARE: { code: 'AE', Flag: AE },
+  AUS: { code: 'AU', Flag: AU },
+  BRA: { code: 'BR', Flag: BR },
+  CAN: { code: 'CA', Flag: CA },
+  CHN: { code: 'CN', Flag: CN },
+  DEU: { code: 'DE', Flag: DE },
+  ESP: { code: 'ES', Flag: ES },
+  FRA: { code: 'FR', Flag: FR },
+  GBR: { code: 'GB', Flag: GB },
+  IND: { code: 'IN', Flag: IN },
+  IRL: { code: 'IE', Flag: IE },
+  ITA: { code: 'IT', Flag: IT },
+  JPN: { code: 'JP', Flag: JP },
+  KOR: { code: 'KR', Flag: KR },
+  MEX: { code: 'MX', Flag: MX },
+  NLD: { code: 'NL', Flag: NL },
+  SGP: { code: 'SG', Flag: SG },
+  SWE: { code: 'SE', Flag: SE },
+  USA: { code: 'US', Flag: US },
+  ZAF: { code: 'ZA', Flag: ZA },
 }
+
+const countryNames = new Intl.DisplayNames(['en'], { type: 'region' })
 
 const headers = [
   { name: 'company', label: 'Company', sortable: true },
@@ -26,7 +63,8 @@ const headers = [
     name: 'country',
     label: 'Country',
     render: (item) => {
-      const Flag = countryFlags[item.country]
+      const country = countries[item.country]
+      const Flag = country?.Flag
 
       return (
         <span className="inline-flex items-center gap-2">
@@ -36,7 +74,7 @@ const headers = [
               className="h-4 w-6 rounded-sm"
             />
           )}
-          {item.country}
+          {country ? countryNames.of(country.code) : item.country}
         </span>
       )
     },

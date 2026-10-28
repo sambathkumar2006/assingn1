@@ -1,5 +1,6 @@
 import { createAsyncThunk, createSelector, createSlice } from '@reduxjs/toolkit'
-import companiesUrl from '../components/companies.json?url'
+
+const companiesUrl = 'http://localhost:8080/api'
 
 export const fetchCompanies = createAsyncThunk(
   'companies/fetchCompanies',
@@ -10,9 +11,18 @@ export const fetchCompanies = createAsyncThunk(
         return rejectWithValue(`Request failed with status ${response.status}`)
       }
 
-      return await response.json()
-    } catch {
-      return rejectWithValue('Unable to load company data.')
+      const result = await response.json()
+      if (!Array.isArray(result.rows)) {
+        return rejectWithValue('The companies API returned an invalid response.')
+      }
+
+      return result.rows
+    } catch (error) {
+      return rejectWithValue(
+        error instanceof Error
+          ? `Unable to load company data: ${error.message}`
+          : 'Unable to load company data.',
+      )
     }
   },
   {
