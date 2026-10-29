@@ -4,9 +4,23 @@ const companiesUrl = 'http://localhost:8080/api'
 
 export const fetchCompanies = createAsyncThunk(
   'companies/fetchCompanies',
-  async (_, { rejectWithValue }) => {
+  async ({ filter = '', sortCol, sortKey, limit } = {}, { rejectWithValue }) => {
     try {
-      const response = await fetch(companiesUrl)
+      const params = new URLSearchParams()
+      if (limit) {
+        params.set('limit', String(limit))
+      }
+
+      if (filter.trim()) {
+        params.set('filter', filter)
+      }
+      if (sortCol) {
+        params.set('sortCol', sortCol)
+        params.set('sortKey', sortKey)
+      }
+
+      const query = params.toString()
+      const response = await fetch(query ? `${companiesUrl}?${query}` : companiesUrl)
       if (!response.ok) {
         return rejectWithValue(`Request failed with status ${response.status}`)
       }
@@ -25,9 +39,6 @@ export const fetchCompanies = createAsyncThunk(
       )
     }
   },
-  {
-    condition: (_, { getState }) => getState().companies.status !== 'loading',
-  },
 )
 
 const companiesSlice = createSlice({
@@ -36,21 +47,35 @@ const companiesSlice = createSlice({
     data: [],
     status: 'idle',
     error: null,
+    requestId: null,
+    hasLoaded: false,
   },
   reducers: {},
   extraReducers: (builder) => {
     builder
-      .addCase(fetchCompanies.pending, (state) => {
+      .addCase(fetchCompanies.pending, (state, action) => {
         state.status = 'loading'
         state.error = null
+        state.requestId = action.meta.requestId
       })
       .addCase(fetchCompanies.fulfilled, (state, action) => {
+        if (state.requestId !== action.meta.requestId) {
+          return
+        }
+
         state.status = 'succeeded'
         state.data = action.payload
+        state.requestId = null
+        state.hasLoaded = true
       })
       .addCase(fetchCompanies.rejected, (state, action) => {
+        if (state.requestId !== action.meta.requestId) {
+          return
+        }
+
         state.status = 'failed'
         state.error = action.payload ?? action.error.message
+        state.requestId = null
       })
   },
 })
@@ -64,5 +89,6 @@ export const selectCompaniesData = createSelector(
 
 export const selectCompaniesStatus = (state) => state.companies.status
 export const selectCompaniesError = (state) => state.companies.error
+export const selectCompaniesLoaded = (state) => state.companies.hasLoaded
 
 export default companiesSlice.reducer

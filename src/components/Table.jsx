@@ -1,5 +1,4 @@
 
-import { useMemo, useState } from 'react'
 import PropTypes from 'prop-types'
 
 function Table({
@@ -7,26 +6,11 @@ function Table({
   data,
   searchText,
   onSearchTextChange,
+  sort,
+  onSortChange,
 }) {
-  const [sort, setSort] = useState(null)
-  const sortedData = useMemo(() => {
-    if (!sort) {
-      return data
-    }
-
-    return [...data].sort((first, second) => {
-      const comparison = String(first[sort.column] ?? '').localeCompare(
-        String(second[sort.column] ?? ''),
-        undefined,
-        { numeric: true, sensitivity: 'base' },
-      )
-
-      return sort.direction === 'asc' ? comparison : -comparison
-    })
-  }, [data, sort])
-
   const toggleSort = (column) => {
-    setSort((currentSort) => {
+    onSortChange((currentSort) => {
       if (currentSort?.column !== column) {
         return { column, direction: 'desc' }
       }
@@ -52,7 +36,7 @@ function Table({
             type="search"
             value={searchText}
             onChange={(event) => onSearchTextChange(event.target.value)}
-            placeholder="Search all columns"
+            placeholder="Search company or contact"
             className="rounded-md border border-slate-300 px-3 py-2 font-normal text-slate-900 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200"
           />
         </label>
@@ -117,7 +101,7 @@ function Table({
                 </td>
               </tr>
             ) : (
-              sortedData.map((item, index) => (
+              data.map((item, index) => (
                 <tr
                   key={item.company ?? index}
                   className="transition-colors hover:bg-slate-50"
@@ -153,6 +137,11 @@ Table.propTypes = {
     .isRequired,
   searchText: PropTypes.string.isRequired,
   onSearchTextChange: PropTypes.func.isRequired,
+  sort: PropTypes.shape({
+    column: PropTypes.string.isRequired,
+    direction: PropTypes.oneOf(['asc', 'desc']).isRequired,
+  }),
+  onSortChange: PropTypes.func.isRequired,
 }
 
 export default Table

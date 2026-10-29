@@ -28,6 +28,7 @@ import {
   fetchCompanies,
   selectCompaniesData,
   selectCompaniesError,
+  selectCompaniesLoaded,
   selectCompaniesStatus,
 } from './store/companiesSlice.js'
 
@@ -55,6 +56,15 @@ const countries = {
 }
 
 const countryNames = new Intl.DisplayNames(['en'], { type: 'region' })
+const countryNameCollator = new Intl.Collator('en', {
+  sensitivity: 'base',
+  numeric: true,
+})
+
+function getCountryName(countryCode) {
+  const country = countries[countryCode]
+  return country ? countryNames.of(country.code) : countryCode
+}
 
 const headers = [
   { name: 'company', label: 'Company', sortable: true },
@@ -62,6 +72,7 @@ const headers = [
   {
     name: 'country',
     label: 'Country',
+    sortable: true,
     render: (item) => {
       const country = countries[item.country]
       const Flag = country?.Flag
@@ -87,26 +98,36 @@ function App() {
   const data = useSelector(selectCompaniesData)
   const status = useSelector(selectCompaniesStatus)
   const error = useSelector(selectCompaniesError)
+  const hasLoaded = useSelector(selectCompaniesLoaded)
   const [searchText, setSearchText] = useState('')
+  const [sort, setSort] = useState(null)
 
   const visibleData = useMemo(() => {
-    const normalizedSearch = searchText.trim().toLocaleLowerCase()
+    if (sort?.column !== 'country') {
+      return data
+    }
 
-    return data
-      .filter((item) =>
-        headers.some((header) =>
-          String(item[header.name] ?? '')
-            .toLocaleLowerCase()
-            .includes(normalizedSearch),
-        ),
+    return [...data].sort((first, second) => {
+      const comparison = countryNameCollator.compare(
+        getCountryName(first.country),
+        getCountryName(second.country),
       )
-  }, [data, searchText])
+      return sort.direction === 'asc' ? comparison : -comparison
+    })
+  }, [data, sort])
 
   useEffect(() => {
-    dispatch(fetchCompanies())
-  }, [dispatch])
+    dispatch(
+      fetchCompanies({
+        filter: searchText,
+        sortCol: sort?.column === 'country' ? undefined : sort?.column,
+        sortKey: sort?.column === 'country' ? undefined : sort?.direction,
+        limit: sort?.column === 'country' ? 10000 : undefined,
+      }),
+    )
+  }, [dispatch, searchText, sort])
 
-  if (status === 'idle' || status === 'loading') {
+  if (status === 'idle' || (status === 'loading' && !hasLoaded)) {
     return <p className="p-8 text-slate-600" role="status">Loading companies...</p>
   }
 
@@ -120,6 +141,8 @@ function App() {
       data={visibleData}
       searchText={searchText}
       onSearchTextChange={setSearchText}
+      sort={sort}
+      onSortChange={setSort}
     />
   )
 }
