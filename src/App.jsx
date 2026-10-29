@@ -1,5 +1,5 @@
 
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useDispatch, useSelector } from 'react-redux'
 import {
   AE,
@@ -29,8 +29,12 @@ import {
   selectCompaniesData,
   selectCompaniesError,
   selectCompaniesLoaded,
+  selectCompaniesPage,
   selectCompaniesStatus,
+  selectCompaniesTotal,
 } from './store/companiesSlice.js'
+
+const PAGE_LIMIT = 100
 
 const countries = {
   ARE: { code: 'AE', Flag: AE },
@@ -99,8 +103,20 @@ function App() {
   const status = useSelector(selectCompaniesStatus)
   const error = useSelector(selectCompaniesError)
   const hasLoaded = useSelector(selectCompaniesLoaded)
+  const page = useSelector(selectCompaniesPage)
+  const total = useSelector(selectCompaniesTotal)
   const [searchText, setSearchText] = useState('')
   const [sort, setSort] = useState(null)
+
+  const requestOptions = useMemo(
+    () => ({
+      filter: searchText,
+      sortCol: sort?.column,
+      sortKey: sort?.direction,
+      limit: PAGE_LIMIT,
+    }),
+    [searchText, sort],
+  )
 
   const visibleData = useMemo(() => {
     if (sort?.column !== 'country') {
@@ -117,21 +133,20 @@ function App() {
   }, [data, sort])
 
   useEffect(() => {
-    dispatch(
-      fetchCompanies({
-        filter: searchText,
-        sortCol: sort?.column === 'country' ? undefined : sort?.column,
-        sortKey: sort?.column === 'country' ? undefined : sort?.direction,
-        limit: sort?.column === 'country' ? 10000 : undefined,
-      }),
-    )
-  }, [dispatch, searchText, sort])
+    dispatch(fetchCompanies({ ...requestOptions, page: 1 }))
+  }, [dispatch, requestOptions])
 
-  if (status === 'idle' || (status === 'loading' && !hasLoaded)) {
+  const loadMore = useCallback(() => {
+    if (status !== 'loading' && data.length < total) {
+      dispatch(fetchCompanies({ ...requestOptions, page: page + 1 }))
+    }
+  }, [data.length, dispatch, page, requestOptions, status, total])
+
+  if (!hasLoaded && status !== 'failed') {
     return <p className="p-8 text-slate-600" role="status">Loading companies...</p>
   }
 
-  if (error) {
+  if (!hasLoaded && error) {
     return <p className="p-8 text-red-700" role="alert">{error}</p>
   }
 
@@ -143,6 +158,10 @@ function App() {
       onSearchTextChange={setSearchText}
       sort={sort}
       onSortChange={setSort}
+      hasMore={data.length < total}
+      isLoading={status === 'loading'}
+      error={error}
+      onLoadMore={loadMore}
     />
   )
 }

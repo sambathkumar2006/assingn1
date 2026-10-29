@@ -1,4 +1,5 @@
 
+import { useEffect, useRef } from 'react'
 import PropTypes from 'prop-types'
 
 function Table({
@@ -8,7 +9,29 @@ function Table({
   onSearchTextChange,
   sort,
   onSortChange,
+  hasMore,
+  isLoading,
+  error,
+  onLoadMore,
 }) {
+  const sentinelRef = useRef(null)
+
+  useEffect(() => {
+    const sentinel = sentinelRef.current
+    if (!sentinel || !hasMore || isLoading || error) {
+      return undefined
+    }
+
+    const observer = new IntersectionObserver(([entry]) => {
+      if (entry.isIntersecting) {
+        onLoadMore()
+      }
+    })
+
+    observer.observe(sentinel)
+    return () => observer.disconnect()
+  }, [error, hasMore, isLoading, onLoadMore])
+
   const toggleSort = (column) => {
     onSortChange((currentSort) => {
       if (currentSort?.column !== column) {
@@ -118,6 +141,35 @@ function Table({
               ))
             )}
           </tbody>
+          <tfoot>
+            <tr>
+              <td
+                colSpan={headers.length}
+                className="px-6 py-4 text-center text-slate-600"
+              >
+                {isLoading && hasMore ? (
+                  <span role="status">Loading more companies...</span>
+                ) : error ? (
+                  <div className="flex flex-col items-center gap-2">
+                    <p className="text-red-700" role="alert">{error}</p>
+                    {hasMore && (
+                      <button
+                        type="button"
+                        onClick={onLoadMore}
+                        className="rounded-md border border-slate-300 px-3 py-1.5 text-slate-700 hover:bg-slate-50"
+                      >
+                        Retry loading companies
+                      </button>
+                    )}
+                  </div>
+                ) : hasMore ? (
+                  <div ref={sentinelRef} aria-hidden="true" className="h-1" />
+                ) : (
+                  data.length > 0 && <span>All companies loaded.</span>
+                )}
+              </td>
+            </tr>
+          </tfoot>
         </table>
       </div>
     </main>
@@ -142,6 +194,10 @@ Table.propTypes = {
     direction: PropTypes.oneOf(['asc', 'desc']).isRequired,
   }),
   onSortChange: PropTypes.func.isRequired,
+  hasMore: PropTypes.bool.isRequired,
+  isLoading: PropTypes.bool.isRequired,
+  error: PropTypes.string,
+  onLoadMore: PropTypes.func.isRequired,
 }
 
 export default Table
