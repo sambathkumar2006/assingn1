@@ -64,7 +64,7 @@ const companiesSlice = createSlice({
         state.status = 'loading'
         state.error = null
         state.requestId = action.meta.requestId
-        if (action.meta.arg.page === 1) {
+        if (action.meta.arg?.page === 1) {
           state.data = []
           state.total = 0
           state.page = 0
@@ -76,13 +76,14 @@ const companiesSlice = createSlice({
           return
         }
 
+        const page = action.meta.arg?.page ?? 1
         state.status = 'succeeded'
         state.data =
-          action.meta.arg.page === 1
+          page === 1
             ? action.payload.rows
             : [...state.data, ...action.payload.rows]
         state.total = action.payload.total
-        state.page = action.meta.arg.page
+        state.page = page
         state.requestId = null
         state.hasLoaded = true
       })

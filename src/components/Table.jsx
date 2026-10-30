@@ -1,4 +1,3 @@
-
 import PropTypes from 'prop-types'
 import useInfiniteScroll from '../hooks/useInfiniteScroll.js'
 
@@ -109,7 +108,7 @@ function Table({
                   colSpan={headers.length}
                   className="px-6 py-8 text-center text-slate-600"
                 >
-                  No matching companies found.
+                  {isLoading ? 'Loading companies...' : 'No matching companies found.'}
                 </td>
               </tr>
             ) : (

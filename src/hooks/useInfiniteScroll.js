@@ -23,3 +23,4 @@ function useInfiniteScroll({ hasMore, isLoading, error, onLoadMore }) {
 }
 
 export default useInfiniteScroll
+

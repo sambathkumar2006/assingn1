@@ -1,4 +1,3 @@
-
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useDispatch, useSelector } from 'react-redux'
 import {
@@ -97,7 +96,6 @@ const headers = [
 ]
 
 function App() {
-
   const dispatch = useDispatch()
   const data = useSelector(selectCompaniesData)
   const status = useSelector(selectCompaniesStatus)
