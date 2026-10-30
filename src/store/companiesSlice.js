@@ -5,7 +5,7 @@ const companiesUrl = 'http://localhost:8080/api'
 export const fetchCompanies = createAsyncThunk(
   'companies/fetchCompanies',
   async (
-    { filter = '', sortCol, sortKey, page = 1, limit = 100 } = {},
+    { filter = '', sortCol, sortKey, page = 1, limit = 10 } = {},
     { rejectWithValue },
   ) => {
     try {
@@ -64,8 +64,8 @@ const companiesSlice = createSlice({
         state.status = 'loading'
         state.error = null
         state.requestId = action.meta.requestId
+        state.data = []
         if (action.meta.arg.page === 1) {
-          state.data = []
           state.total = 0
           state.page = 0
           state.hasLoaded = false
@@ -77,10 +77,7 @@ const companiesSlice = createSlice({
         }
 
         state.status = 'succeeded'
-        state.data =
-          action.meta.arg.page === 1
-            ? action.payload.rows
-            : [...state.data, ...action.payload.rows]
+        state.data = action.payload.rows
         state.total = action.payload.total
         state.page = action.meta.arg.page
         state.requestId = null

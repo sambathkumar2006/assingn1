@@ -16,14 +16,14 @@ function toPositiveInt(value, fallback) {
 }
 
 // GET /api?limit=10&page=1&sortCol=company&sortKey=asc&filter=apex
-//   limit    rows per page (default 100)
+//   limit    rows per page (default 10)
 //   page     1-based page number (default 1)
 //   sortCol  column to sort by: company | contact | country (default: data order)
 //   sortKey  sort direction: asc | desc (default asc)
 //   filter   case-insensitive substring match on company or contact
 // Responds with { rows, total }, where total counts every row matching the filter, not just this page.
 app.get('/api', (req, res) => {
-  const limit = toPositiveInt(req.query.limit, 100);
+  const limit = toPositiveInt(req.query.limit, 10);
   const page = toPositiveInt(req.query.page, 1);
   const sortCol = String(req.query.sortCol ?? '').toLowerCase();
   const direction = String(req.query.sortKey ?? '').toLowerCase() === 'desc' ? -1 : 1;

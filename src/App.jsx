@@ -1,5 +1,5 @@
 
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useDispatch, useSelector } from 'react-redux'
 import {
   AE,
@@ -29,12 +29,11 @@ import {
   selectCompaniesData,
   selectCompaniesError,
   selectCompaniesLoaded,
-  selectCompaniesPage,
   selectCompaniesStatus,
   selectCompaniesTotal,
 } from './store/companiesSlice.js'
 
-const PAGE_LIMIT = 100
+const PAGE_LIMIT = 10
 
 const countries = {
   ARE: { code: 'AE', Flag: AE },
@@ -103,10 +102,11 @@ function App() {
   const status = useSelector(selectCompaniesStatus)
   const error = useSelector(selectCompaniesError)
   const hasLoaded = useSelector(selectCompaniesLoaded)
-  const page = useSelector(selectCompaniesPage)
   const total = useSelector(selectCompaniesTotal)
   const [searchText, setSearchText] = useState('')
   const [sort, setSort] = useState(null)
+  const [currentPage, setCurrentPage] = useState(1)
+  const totalPages = Math.max(1, Math.ceil(total / PAGE_LIMIT))
 
   const requestOptions = useMemo(
     () => ({
@@ -133,21 +133,31 @@ function App() {
   }, [data, sort])
 
   useEffect(() => {
-    dispatch(fetchCompanies({ ...requestOptions, page: 1 }))
-  }, [dispatch, requestOptions])
+    dispatch(fetchCompanies({ ...requestOptions, page: currentPage }))
+  }, [currentPage, dispatch, requestOptions])
 
-  const loadMore = useCallback(() => {
-    if (status !== 'loading' && data.length < total) {
-      dispatch(fetchCompanies({ ...requestOptions, page: page + 1 }))
+  const handlePageChange = (page) => {
+    if (status !== 'loading' && page >= 1 && page <= totalPages) {
+      setCurrentPage(page)
     }
-  }, [data.length, dispatch, page, requestOptions, status, total])
+  }
+
+  const handleSearchTextChange = (value) => {
+    setSearchText(value)
+    setCurrentPage(1)
+  }
+
+  const handleSortChange = (updateSort) => {
+    setSort(updateSort)
+    setCurrentPage(1)
+  }
+
+  const retryCurrentPage = () => {
+    dispatch(fetchCompanies({ ...requestOptions, page: currentPage }))
+  }
 
   if (!hasLoaded && status !== 'failed') {
     return <p className="p-8 text-slate-600" role="status">Loading companies...</p>
-  }
-
-  if (!hasLoaded && error) {
-    return <p className="p-8 text-red-700" role="alert">{error}</p>
   }
 
   return (
@@ -155,13 +165,15 @@ function App() {
       headers={headers}
       data={visibleData}
       searchText={searchText}
-      onSearchTextChange={setSearchText}
+      onSearchTextChange={handleSearchTextChange}
       sort={sort}
-      onSortChange={setSort}
-      hasMore={data.length < total}
+      onSortChange={handleSortChange}
       isLoading={status === 'loading'}
       error={error}
-      onLoadMore={loadMore}
+      currentPage={currentPage}
+      totalPages={totalPages}
+      onPageChange={handlePageChange}
+      onRetry={retryCurrentPage}
     />
   )
 }

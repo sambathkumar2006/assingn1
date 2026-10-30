@@ -1,5 +1,4 @@
 
-import { useEffect, useRef } from 'react'
 import PropTypes from 'prop-types'
 
 function Table({
@@ -9,29 +8,13 @@ function Table({
   onSearchTextChange,
   sort,
   onSortChange,
-  hasMore,
   isLoading,
   error,
-  onLoadMore,
+  currentPage,
+  totalPages,
+  onPageChange,
+  onRetry,
 }) {
-  const sentinelRef = useRef(null)
-
-  useEffect(() => {
-    const sentinel = sentinelRef.current
-    if (!sentinel || !hasMore || isLoading || error) {
-      return undefined
-    }
-
-    const observer = new IntersectionObserver(([entry]) => {
-      if (entry.isIntersecting) {
-        onLoadMore()
-      }
-    })
-
-    observer.observe(sentinel)
-    return () => observer.disconnect()
-  }, [error, hasMore, isLoading, onLoadMore])
-
   const toggleSort = (column) => {
     onSortChange((currentSort) => {
       if (currentSort?.column !== column) {
@@ -120,7 +103,7 @@ function Table({
                   colSpan={headers.length}
                   className="px-6 py-8 text-center text-slate-600"
                 >
-                  No matching companies found.
+                  {isLoading ? 'Loading companies...' : 'No matching companies found.'}
                 </td>
               </tr>
             ) : (
@@ -141,37 +124,76 @@ function Table({
               ))
             )}
           </tbody>
-          <tfoot>
-            <tr>
-              <td
-                colSpan={headers.length}
-                className="px-6 py-4 text-center text-slate-600"
-              >
-                {isLoading && hasMore ? (
-                  <span role="status">Loading more companies...</span>
-                ) : error ? (
-                  <div className="flex flex-col items-center gap-2">
-                    <p className="text-red-700" role="alert">{error}</p>
-                    {hasMore && (
-                      <button
-                        type="button"
-                        onClick={onLoadMore}
-                        className="rounded-md border border-slate-300 px-3 py-1.5 text-slate-700 hover:bg-slate-50"
-                      >
-                        Retry loading companies
-                      </button>
-                    )}
-                  </div>
-                ) : hasMore ? (
-                  <div ref={sentinelRef} aria-hidden="true" className="h-1" />
-                ) : (
-                  data.length > 0 && <span>All companies loaded.</span>
-                )}
-              </td>
-            </tr>
-          </tfoot>
         </table>
       </div>
+
+      {error && (
+        <div className="mt-4 flex flex-col items-center gap-2">
+          <p className="text-red-700" role="alert">{error}</p>
+          <button
+            type="button"
+            onClick={onRetry}
+            className="rounded-md border border-slate-300 px-3 py-1.5 text-slate-700 hover:bg-slate-50"
+          >
+            Retry loading companies
+          </button>
+        </div>
+      )}
+
+      <nav
+        aria-label="Pagination"
+        className="mt-4 flex items-center justify-center gap-1"
+      >
+        {currentPage > 1 ? (
+          <button
+            type="button"
+            aria-label="Previous page"
+            onClick={() => onPageChange(currentPage - 1)}
+            disabled={isLoading}
+            className="h-10 w-10 rounded-md border border-slate-300 text-slate-700 hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            ←
+          </button>
+        ) : (
+          <span className="h-10 w-10" aria-hidden="true" />
+        )}
+
+        {[currentPage - 1, currentPage, currentPage + 1].map((page) =>
+          page >= 1 && page <= totalPages ? (
+            <button
+              key={page}
+              type="button"
+              aria-current={page === currentPage ? 'page' : undefined}
+              aria-label={`Go to page ${page}`}
+              onClick={() => onPageChange(page)}
+              disabled={isLoading || page === currentPage}
+              className={`h-10 min-w-10 rounded-md border px-3 disabled:cursor-not-allowed ${
+                page === currentPage
+                  ? 'border-blue-600 bg-blue-600 text-white'
+                  : 'border-slate-300 text-slate-700 hover:bg-slate-100 disabled:opacity-50'
+              }`}
+            >
+              {page}
+            </button>
+          ) : (
+            <span key={page} className="h-10 min-w-10" aria-hidden="true" />
+          ),
+        )}
+
+        {currentPage < totalPages ? (
+          <button
+            type="button"
+            aria-label="Next page"
+            onClick={() => onPageChange(currentPage + 1)}
+            disabled={isLoading}
+            className="h-10 w-10 rounded-md border border-slate-300 text-slate-700 hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            →
+          </button>
+        ) : (
+          <span className="h-10 w-10" aria-hidden="true" />
+        )}
+      </nav>
     </main>
   )
 }
@@ -194,10 +216,12 @@ Table.propTypes = {
     direction: PropTypes.oneOf(['asc', 'desc']).isRequired,
   }),
   onSortChange: PropTypes.func.isRequired,
-  hasMore: PropTypes.bool.isRequired,
   isLoading: PropTypes.bool.isRequired,
   error: PropTypes.string,
-  onLoadMore: PropTypes.func.isRequired,
+  currentPage: PropTypes.number.isRequired,
+  totalPages: PropTypes.number.isRequired,
+  onPageChange: PropTypes.func.isRequired,
+  onRetry: PropTypes.func.isRequired,
 }
 
 export default Table
