@@ -1,6 +1,6 @@
 
-import { useEffect, useRef } from 'react'
 import PropTypes from 'prop-types'
+import useInfiniteScroll from '../hooks/useInfiniteScroll.js'
 
 function Table({
   headers,
@@ -14,23 +14,12 @@ function Table({
   error,
   onLoadMore,
 }) {
-  const sentinelRef = useRef(null)
-
-  useEffect(() => {
-    const sentinel = sentinelRef.current
-    if (!sentinel || !hasMore || isLoading || error) {
-      return undefined
-    }
-
-    const observer = new IntersectionObserver(([entry]) => {
-      if (entry.isIntersecting) {
-        onLoadMore()
-      }
-    })
-
-    observer.observe(sentinel)
-    return () => observer.disconnect()
-  }, [error, hasMore, isLoading, onLoadMore])
+  const sentinelRef = useInfiniteScroll({
+    hasMore,
+    isLoading,
+    error,
+    onLoadMore,
+  })
 
   const toggleSort = (column) => {
     onSortChange((currentSort) => {
