@@ -1,10 +1,75 @@
 import { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
+import useForm from '../hooks/useForm.js'
 import { countries, countryOptions } from '../utils/countries.js'
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 const VALID_LOGO_TYPES = ['image/jpeg', 'image/png']
 const VALID_LOGO_EXTENSIONS = /\.(jpe?g|png)$/i
+
+// Form structure containing field ids, initial values, and validations
+const FORM_STRUCTURE = [
+  {
+    id: 'company',
+    label: 'Company',
+    initialValue: '',
+    validations: [
+      (value) => (!value || !value.trim() ? 'Company name is required.' : ''),
+    ],
+  },
+  {
+    id: 'contact',
+    label: 'Contact',
+    initialValue: '',
+    validations: [
+      (value) => (!value || !value.trim() ? 'Contact name is required.' : ''),
+    ],
+  },
+  {
+    id: 'country',
+    label: 'Country',
+    initialValue: '',
+    validations: [
+      (value) => {
+        if (!value) return 'Please select a valid 3-letter ISO country.'
+        if (value.length !== 3 || !/^[A-Z]{3}$/.test(value) || !countries[value]) {
+          return 'Please select a valid 3-letter ISO country.'
+        }
+        return ''
+      },
+    ],
+  },
+  {
+    id: 'email',
+    label: 'Email',
+    initialValue: '',
+    validations: [
+      (value) => {
+        if (!value || !value.trim()) return 'Email address is required.'
+        if (!EMAIL_REGEX.test(value.trim())) {
+          return 'Please enter a valid email address (e.g. contact@example.com).'
+        }
+        return ''
+      },
+    ],
+  },
+  {
+    id: 'logo',
+    label: 'Logo',
+    initialValue: null,
+    validations: [
+      (value) => {
+        if (!value) return 'Company logo is required.'
+        const isTypeValid = VALID_LOGO_TYPES.includes(value.type)
+        const isExtValid = VALID_LOGO_EXTENSIONS.test(value.name)
+        if (!isTypeValid && !isExtValid) {
+          return 'Invalid file type. Only JPG and PNG image files are allowed.'
+        }
+        return ''
+      },
+    ],
+  },
+]
 
 function formatFileSize(bytes) {
   if (bytes < 1024) return `${bytes} B`
@@ -16,71 +81,14 @@ function AddCompanyForm() {
   const cardRef = useRef(null)
   const fileInputRef = useRef(null)
 
-  const [formData, setFormData] = useState({
-    company: '',
-    contact: '',
-    country: '',
-    email: '',
-    logo: null,
-  })
-
-  const [touched, setTouched] = useState({
-    company: false,
-    contact: false,
-    country: false,
-    email: false,
-    logo: false,
-  })
+  // Use the custom useForm hook
+  const { values, valuesSetter, errors, isValid, touched, setTouched, resetForm } =
+    useForm(FORM_STRUCTURE)
 
   const [submitted, setSubmitted] = useState(false)
   const [previewUrl, setPreviewUrl] = useState(null)
   const [tilt, setTilt] = useState({ x: 0, y: 0 })
   const [glare, setGlare] = useState({ x: 50, y: 50, opacity: 0 })
-
-  // Validation: Company (required text)
-  const isCompanyValid = formData.company.trim().length > 0
-  const companyError = !isCompanyValid ? 'Company name is required.' : ''
-
-  // Validation: Contact (required text)
-  const isContactValid = formData.contact.trim().length > 0
-  const contactError = !isContactValid ? 'Contact name is required.' : ''
-
-  // Validation: Country (required 3-letter ISO code dropdown)
-  const isCountryValid =
-    formData.country.length === 3 &&
-    /^[A-Z]{3}$/.test(formData.country) &&
-    Boolean(countries[formData.country])
-  const countryError = !isCountryValid ? 'Please select a valid 3-letter ISO country.' : ''
-
-  // Validation: Email (required, valid format)
-  const isEmailPresent = formData.email.trim().length > 0
-  const isEmailFormatValid = EMAIL_REGEX.test(formData.email.trim())
-  const isEmailValid = isEmailPresent && isEmailFormatValid
-  let emailError = ''
-  if (!isEmailPresent) {
-    emailError = 'Email address is required.'
-  } else if (!isEmailFormatValid) {
-    emailError = 'Please enter a valid email address (e.g. contact@example.com).'
-  }
-
-  // Validation: Logo (required, only jpg/png)
-  let isLogoValid = false
-  let logoError = ''
-  if (!formData.logo) {
-    logoError = 'Company logo is required.'
-  } else {
-    const isTypeValid = VALID_LOGO_TYPES.includes(formData.logo.type)
-    const isExtValid = VALID_LOGO_EXTENSIONS.test(formData.logo.name)
-    if (isTypeValid || isExtValid) {
-      isLogoValid = true
-    } else {
-      logoError = 'Invalid file type. Only JPG and PNG image files are allowed.'
-    }
-  }
-
-  // Submit button enabled only when all validations pass
-  const isFormValid =
-    isCompanyValid && isContactValid && isCountryValid && isEmailValid && isLogoValid
 
   // Clean up object URL on unmount
   useEffect(() => {
@@ -116,7 +124,7 @@ function AddCompanyForm() {
   }
 
   const handleInputChange = (field) => (event) => {
-    setFormData((prev) => ({ ...prev, [field]: event.target.value }))
+    valuesSetter(field, event.target.value)
     setSubmitted(false)
   }
 
@@ -126,7 +134,7 @@ function AddCompanyForm() {
 
   const handleLogoChange = (event) => {
     const file = event.target.files?.[0] || null
-    setFormData((prev) => ({ ...prev, logo: file }))
+    valuesSetter('logo', file)
     setTouched((prev) => ({ ...prev, logo: true }))
     setSubmitted(false)
 
@@ -148,7 +156,7 @@ function AddCompanyForm() {
     if (previewUrl) {
       URL.revokeObjectURL(previewUrl)
     }
-    setFormData((prev) => ({ ...prev, logo: null }))
+    valuesSetter('logo', null)
     setTouched((prev) => ({ ...prev, logo: true }))
     setPreviewUrl(null)
     setSubmitted(false)
@@ -157,7 +165,7 @@ function AddCompanyForm() {
   const handleSubmit = (event) => {
     event.preventDefault()
 
-    if (!isFormValid) {
+    if (!isValid) {
       setTouched({
         company: true,
         contact: true,
@@ -169,17 +177,17 @@ function AddCompanyForm() {
     }
 
     // Required console logs
-    console.log('Company:', formData.company.trim())
-    console.log('Contact:', formData.contact.trim())
-    console.log('Country:', formData.country)
-    console.log('Email:', formData.email.trim())
-    console.log('Logo file object:', formData.logo)
+    console.log('Company:', values.company.trim())
+    console.log('Contact:', values.contact.trim())
+    console.log('Country:', values.country)
+    console.log('Email:', values.email.trim())
+    console.log('Logo file object:', values.logo)
     console.log('Form submission payload:', {
-      company: formData.company.trim(),
-      contact: formData.contact.trim(),
-      country: formData.country,
-      email: formData.email.trim(),
-      logo: formData.logo,
+      company: values.company.trim(),
+      contact: values.contact.trim(),
+      country: values.country,
+      email: values.email.trim(),
+      logo: values.logo,
     })
 
     setSubmitted(true)
@@ -189,20 +197,7 @@ function AddCompanyForm() {
     if (previewUrl) {
       URL.revokeObjectURL(previewUrl)
     }
-    setFormData({
-      company: '',
-      contact: '',
-      country: '',
-      email: '',
-      logo: null,
-    })
-    setTouched({
-      company: false,
-      contact: false,
-      country: false,
-      email: false,
-      logo: false,
-    })
+    resetForm()
     if (fileInputRef.current) {
       fileInputRef.current.value = ''
     }
@@ -302,20 +297,20 @@ function AddCompanyForm() {
                   name="company"
                   type="text"
                   required
-                  value={formData.company}
+                  value={values.company}
                   onChange={handleInputChange('company')}
                   onBlur={handleBlur('company')}
                   placeholder="e.g. Apex Corporation"
-                  aria-invalid={touched.company && !isCompanyValid}
-                  aria-describedby={touched.company && companyError ? 'company-error' : undefined}
+                  aria-invalid={touched.company && Boolean(errors.company)}
+                  aria-describedby={touched.company && errors.company ? 'company-error' : undefined}
                   className={`input-3d block w-full rounded-lg px-3.5 py-2.5 text-sm font-medium text-slate-900 placeholder-slate-400 focus:outline-none ${
-                    touched.company && !isCompanyValid ? 'input-3d-error' : ''
+                    touched.company && errors.company ? 'input-3d-error' : ''
                   }`}
                 />
               </div>
-              {touched.company && companyError && (
+              {touched.company && errors.company && (
                 <p id="company-error" role="alert" className="mt-1.5 text-xs font-semibold text-red-600">
-                  {companyError}
+                  {errors.company}
                 </p>
               )}
             </div>
@@ -348,20 +343,20 @@ function AddCompanyForm() {
                   name="contact"
                   type="text"
                   required
-                  value={formData.contact}
+                  value={values.contact}
                   onChange={handleInputChange('contact')}
                   onBlur={handleBlur('contact')}
                   placeholder="e.g. Jane Doe"
-                  aria-invalid={touched.contact && !isContactValid}
-                  aria-describedby={touched.contact && contactError ? 'contact-error' : undefined}
+                  aria-invalid={touched.contact && Boolean(errors.contact)}
+                  aria-describedby={touched.contact && errors.contact ? 'contact-error' : undefined}
                   className={`input-3d block w-full rounded-lg px-3.5 py-2.5 text-sm font-medium text-slate-900 placeholder-slate-400 focus:outline-none ${
-                    touched.contact && !isContactValid ? 'input-3d-error' : ''
+                    touched.contact && errors.contact ? 'input-3d-error' : ''
                   }`}
                 />
               </div>
-              {touched.contact && contactError && (
+              {touched.contact && errors.contact && (
                 <p id="contact-error" role="alert" className="mt-1.5 text-xs font-semibold text-red-600">
-                  {contactError}
+                  {errors.contact}
                 </p>
               )}
             </div>
@@ -395,13 +390,13 @@ function AddCompanyForm() {
                   id="country"
                   name="country"
                   required
-                  value={formData.country}
+                  value={values.country}
                   onChange={handleInputChange('country')}
                   onBlur={handleBlur('country')}
-                  aria-invalid={touched.country && !isCountryValid}
-                  aria-describedby={touched.country && countryError ? 'country-error' : undefined}
+                  aria-invalid={touched.country && Boolean(errors.country)}
+                  aria-describedby={touched.country && errors.country ? 'country-error' : undefined}
                   className={`input-3d block w-full rounded-lg px-3.5 py-2.5 text-sm font-medium text-slate-900 focus:outline-none ${
-                    touched.country && !isCountryValid ? 'input-3d-error' : ''
+                    touched.country && errors.country ? 'input-3d-error' : ''
                   }`}
                 >
                   <option value="">Select a country</option>
@@ -412,9 +407,9 @@ function AddCompanyForm() {
                   ))}
                 </select>
               </div>
-              {touched.country && countryError ? (
+              {touched.country && errors.country ? (
                 <p id="country-error" role="alert" className="mt-1.5 text-xs font-semibold text-red-600">
-                  {countryError}
+                  {errors.country}
                 </p>
               ) : (
                 <p className="mt-1 text-xs text-slate-500">
@@ -451,20 +446,20 @@ function AddCompanyForm() {
                   name="email"
                   type="email"
                   required
-                  value={formData.email}
+                  value={values.email}
                   onChange={handleInputChange('email')}
                   onBlur={handleBlur('email')}
                   placeholder="e.g. contact@apex.com"
-                  aria-invalid={touched.email && !isEmailValid}
-                  aria-describedby={touched.email && emailError ? 'email-error' : undefined}
+                  aria-invalid={touched.email && Boolean(errors.email)}
+                  aria-describedby={touched.email && errors.email ? 'email-error' : undefined}
                   className={`input-3d block w-full rounded-lg px-3.5 py-2.5 text-sm font-medium text-slate-900 placeholder-slate-400 focus:outline-none ${
-                    touched.email && !isEmailValid ? 'input-3d-error' : ''
+                    touched.email && errors.email ? 'input-3d-error' : ''
                   }`}
                 />
               </div>
-              {touched.email && emailError && (
+              {touched.email && errors.email && (
                 <p id="email-error" role="alert" className="mt-1.5 text-xs font-semibold text-red-600">
-                  {emailError}
+                  {errors.email}
                 </p>
               )}
             </div>
@@ -498,7 +493,7 @@ function AddCompanyForm() {
               <label
                 htmlFor="logo"
                 className={`dropzone-3d flex cursor-pointer flex-col items-center justify-center p-6 text-center ${
-                  touched.logo && !isLogoValid ? 'border-red-400 bg-red-50/50' : ''
+                  touched.logo && errors.logo ? 'border-red-400 bg-red-50/50' : ''
                 }`}
               >
                 <div className="mb-2 flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-blue-500 to-indigo-600 text-white shadow-[0_4px_0_#1d4ed8,0_8px_16px_rgba(37,99,235,0.3)]">
@@ -538,14 +533,14 @@ function AddCompanyForm() {
               </label>
             </div>
 
-            {touched.logo && logoError && (
+            {touched.logo && errors.logo && (
               <p id="logo-error" role="alert" className="mt-1.5 text-xs font-semibold text-red-600">
-                {logoError}
+                {errors.logo}
               </p>
             )}
 
             {/* 3D Floating Thumbnail Preview */}
-            {previewUrl && formData.logo && (
+            {previewUrl && values.logo && (
               <div className="preview-3d mt-4 flex items-center gap-4 p-3.5">
                 <img
                   src={previewUrl}
@@ -554,10 +549,10 @@ function AddCompanyForm() {
                 />
                 <div className="min-w-0 flex-1">
                   <p className="truncate text-sm font-bold text-slate-800">
-                    {formData.logo.name}
+                    {values.logo.name}
                   </p>
                   <p className="text-xs font-medium text-slate-500">
-                    {formatFileSize(formData.logo.size)} • {formData.logo.type || 'image'}
+                    {formatFileSize(values.logo.size)} • {values.logo.type || 'image'}
                   </p>
                 </div>
                 <button
@@ -576,7 +571,7 @@ function AddCompanyForm() {
             <div className="flex items-center gap-3">
               <button
                 type="submit"
-                disabled={!isFormValid}
+                disabled={!isValid}
                 className="btn-3d-primary gap-2 px-6 py-3 text-sm tracking-wide"
               >
                 <svg
@@ -600,7 +595,7 @@ function AddCompanyForm() {
               </Link>
             </div>
 
-            {!isFormValid && (
+            {!isValid && (
               <span className="text-xs font-medium text-slate-500">
                 Fill in all required fields to activate the submit button.
               </span>
