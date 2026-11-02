@@ -1,4 +1,5 @@
 import PropTypes from 'prop-types'
+import { Link } from 'react-router-dom'
 import useInfiniteScroll from '../hooks/useInfiniteScroll.js'
 
 function Table({
@@ -36,31 +37,53 @@ function Table({
 
   return (
     <main className="mx-auto min-h-screen w-full max-w-5xl px-4 py-12 sm:px-6 lg:px-8">
-      <h1 className="mb-6 text-2xl font-semibold text-slate-900">
-        Company contacts
-      </h1>
+      <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <span className="badge-3d mb-2">Directory</span>
+          <h1 className="text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl">
+            Company contacts
+          </h1>
+        </div>
+
+        <Link
+          to="/add-company"
+          className="btn-3d-primary gap-2 self-start sm:self-auto px-4 py-2.5 text-sm"
+        >
+          <svg
+            aria-hidden="true"
+            className="h-4 w-4"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+            strokeWidth="2.5"
+          >
+            <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
+          </svg>
+          Add Company
+        </Link>
+      </div>
 
       <div className="mb-4 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-        <label className="flex flex-col gap-1 text-sm font-medium text-slate-700">
+        <label className="flex flex-col gap-1 text-sm font-semibold text-slate-700">
           Filter
           <input
             type="search"
             value={searchText}
             onChange={(event) => onSearchTextChange(event.target.value)}
             placeholder="Search company or contact"
-            className="rounded-md border border-slate-300 px-3 py-2 font-normal text-slate-900 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200"
+            className="input-3d rounded-lg px-3.5 py-2 font-normal text-slate-900 placeholder-slate-400 focus:outline-none"
           />
         </label>
       </div>
 
-      <div className="overflow-x-auto rounded-lg border border-slate-200 bg-white shadow-sm">
+      <div className="overflow-x-auto rounded-xl border border-slate-200/90 bg-white shadow-[0_4px_20px_-4px_rgba(15,23,42,0.06),0_1px_0_rgba(255,255,255,1)_inset]">
         <table className="w-full min-w-[36rem] border-collapse text-left text-sm">
-          <thead className="bg-slate-100 text-xs uppercase text-slate-600">
+          <thead className="bg-slate-100/80 text-xs font-bold uppercase tracking-wider text-slate-600 border-b border-slate-200">
             <tr>
               {headers.map((header) => (
                 <th
                   key={header.name}
-                  className={`px-6 py-4 font-semibold ${header.sortable ? 'group' : ''}`}
+                  className={`px-6 py-4 ${header.sortable ? 'group' : ''}`}
                 >
                   {header.sortable ? (
                     <button
@@ -71,16 +94,16 @@ function Table({
                           ? `Sort ${header.label} ${sort.direction === 'desc' ? 'ascending' : 'unsorted'}`
                           : `Sort ${header.label} descending`
                       }
-                      className="inline-flex items-center gap-2 text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+                      className="inline-flex items-center gap-2 text-left font-bold focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 rounded"
                     >
                       {header.label}
                       <svg
                         aria-hidden="true"
                         viewBox="0 0 16 16"
-                        className={`h-3.5 w-3.5 transition-opacity ${
+                        className={`h-3.5 w-3.5 transition-transform ${
                           sort?.column === header.name
-                            ? 'opacity-100'
-                            : 'opacity-0 group-hover:opacity-100 group-focus-within:opacity-100'
+                            ? 'opacity-100 text-blue-600'
+                            : 'opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 text-slate-400'
                         } ${sort?.column === header.name && sort.direction === 'asc' ? 'rotate-180' : ''}`}
                         fill="none"
                       >
@@ -89,7 +112,7 @@ function Table({
                           stroke="currentColor"
                           strokeLinecap="round"
                           strokeLinejoin="round"
-                          strokeWidth="1.5"
+                          strokeWidth="2"
                         />
                       </svg>
                     </button>
@@ -101,7 +124,7 @@ function Table({
             </tr>
           </thead>
 
-          <tbody className="divide-y divide-slate-200">
+          <tbody className="divide-y divide-slate-200/80">
             {data.length === 0 ? (
               <tr>
                 <td
@@ -115,12 +138,12 @@ function Table({
               data.map((item, index) => (
                 <tr
                   key={item.company ?? index}
-                  className="transition-colors hover:bg-slate-50"
+                  className="transition-colors hover:bg-slate-50/80"
                 >
                   {headers.map((header) => (
                     <td
                       key={header.name}
-                      className="px-6 py-4 text-slate-600"
+                      className="px-6 py-4 font-medium text-slate-700"
                     >
                       {header.render ? header.render(item) : item[header.name]}
                     </td>
@@ -133,18 +156,18 @@ function Table({
             <tr>
               <td
                 colSpan={headers.length}
-                className="px-6 py-4 text-center text-slate-600"
+                className="px-6 py-4 text-center text-slate-600 border-t border-slate-200"
               >
                 {isLoading && hasMore ? (
-                  <span role="status">Loading more companies...</span>
+                  <span role="status" className="font-medium text-blue-600">Loading more companies...</span>
                 ) : error ? (
                   <div className="flex flex-col items-center gap-2">
-                    <p className="text-red-700" role="alert">{error}</p>
+                    <p className="text-red-700 font-semibold" role="alert">{error}</p>
                     {hasMore && (
                       <button
                         type="button"
                         onClick={onLoadMore}
-                        className="rounded-md border border-slate-300 px-3 py-1.5 text-slate-700 hover:bg-slate-50"
+                        className="btn-3d-secondary px-3 py-1.5 text-xs font-semibold"
                       >
                         Retry loading companies
                       </button>
@@ -153,7 +176,7 @@ function Table({
                 ) : hasMore ? (
                   <div ref={sentinelRef} aria-hidden="true" className="h-1" />
                 ) : (
-                  data.length > 0 && <span>All companies loaded.</span>
+                  data.length > 0 && <span className="text-xs font-semibold uppercase tracking-wider text-slate-400">All companies loaded.</span>
                 )}
               </td>
             </tr>
