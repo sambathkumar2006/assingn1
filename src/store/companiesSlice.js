@@ -1,6 +1,5 @@
 import { createAsyncThunk, createSelector, createSlice } from '@reduxjs/toolkit'
-
-const companiesUrl = 'http://localhost:8080/api'
+import { API_BASE_URL } from '../utils/api.js'
 
 export const fetchCompanies = createAsyncThunk(
   'companies/fetchCompanies',
@@ -21,7 +20,7 @@ export const fetchCompanies = createAsyncThunk(
       }
 
       const query = params.toString()
-      const response = await fetch(query ? `${companiesUrl}?${query}` : companiesUrl)
+      const response = await fetch(query ? `${API_BASE_URL}?${query}` : API_BASE_URL)
       if (!response.ok) {
         return rejectWithValue(`Request failed with status ${response.status}`)
       }
@@ -64,12 +63,6 @@ const companiesSlice = createSlice({
         state.status = 'loading'
         state.error = null
         state.requestId = action.meta.requestId
-        if (action.meta.arg?.page === 1) {
-          state.data = []
-          state.total = 0
-          state.page = 0
-          state.hasLoaded = false
-        }
       })
       .addCase(fetchCompanies.fulfilled, (state, action) => {
         if (state.requestId !== action.meta.requestId) {

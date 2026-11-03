@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import useForm from '../hooks/useForm.js'
+import { API_BASE_URL } from '../utils/api.js'
 import { countries, countryOptions } from '../utils/countries.js'
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
@@ -86,6 +87,8 @@ function AddCompanyForm() {
     useForm(FORM_STRUCTURE)
 
   const [submitted, setSubmitted] = useState(false)
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [submitError, setSubmitError] = useState('')
   const [previewUrl, setPreviewUrl] = useState(null)
   const [tilt, setTilt] = useState({ x: 0, y: 0 })
   const [glare, setGlare] = useState({ x: 50, y: 50, opacity: 0 })
@@ -126,6 +129,7 @@ function AddCompanyForm() {
   const handleInputChange = (field) => (event) => {
     valuesSetter(field, event.target.value)
     setSubmitted(false)
+    setSubmitError('')
   }
 
   const handleBlur = (field) => () => {
@@ -137,6 +141,7 @@ function AddCompanyForm() {
     valuesSetter('logo', file)
     setTouched((prev) => ({ ...prev, logo: true }))
     setSubmitted(false)
+    setSubmitError('')
 
     if (previewUrl) {
       URL.revokeObjectURL(previewUrl)
@@ -160,9 +165,10 @@ function AddCompanyForm() {
     setTouched((prev) => ({ ...prev, logo: true }))
     setPreviewUrl(null)
     setSubmitted(false)
+    setSubmitError('')
   }
 
-  const handleSubmit = (event) => {
+  const handleSubmit = async (event) => {
     event.preventDefault()
 
     if (!isValid) {
@@ -176,21 +182,43 @@ function AddCompanyForm() {
       return
     }
 
-    // Required console logs
-    console.log('Company:', values.company.trim())
-    console.log('Contact:', values.contact.trim())
-    console.log('Country:', values.country)
-    console.log('Email:', values.email.trim())
-    console.log('Logo file object:', values.logo)
-    console.log('Form submission payload:', {
-      company: values.company.trim(),
-      contact: values.contact.trim(),
-      country: values.country,
-      email: values.email.trim(),
-      logo: values.logo,
-    })
+    const formData = new FormData()
+    formData.append('company', values.company.trim())
+    formData.append('contact', values.contact.trim())
+    formData.append('country', values.country)
+    formData.append('email', values.email.trim())
+    formData.append('image', values.logo)
 
-    setSubmitted(true)
+    setIsSubmitting(true)
+    setSubmitError('')
+    setSubmitted(false)
+
+    try {
+      const response = await fetch(`${API_BASE_URL}/submit`, {
+        method: 'POST',
+        body: formData,
+      })
+      const result = await response.json()
+
+      if (!response.ok) {
+        const apiErrors = result?.errors
+        const message =
+          apiErrors && typeof apiErrors === 'object'
+            ? Object.values(apiErrors).filter((error) => typeof error === 'string').join('. ')
+            : ''
+        throw new Error(message || `Company submission failed (${response.status}).`)
+      }
+
+      setSubmitted(true)
+    } catch (error) {
+      setSubmitError(
+        error instanceof Error
+          ? error.message
+          : 'Unable to submit the company. Please try again.',
+      )
+    } finally {
+      setIsSubmitting(false)
+    }
   }
 
   const handleReset = () => {
@@ -203,6 +231,7 @@ function AddCompanyForm() {
     }
     setPreviewUrl(null)
     setSubmitted(false)
+    setSubmitError('')
   }
 
   return (
@@ -251,7 +280,7 @@ function AddCompanyForm() {
                     Company Registered Successfully!
                   </p>
                   <p className="text-xs text-emerald-800">
-                    Form values and logo file object were logged to the browser console.
+                    The company has been saved to the directory.
                   </p>
                 </div>
               </div>
@@ -265,6 +294,15 @@ function AddCompanyForm() {
               </button>
             </div>
           </div>
+        )}
+
+        {submitError && (
+          <p
+            role="alert"
+            className="mb-6 rounded-lg border border-red-300 bg-red-50 px-4 py-3 text-sm font-medium text-red-700"
+          >
+            {submitError}
+          </p>
         )}
 
         <form onSubmit={handleSubmit} noValidate className="space-y-6">
@@ -571,7 +609,7 @@ function AddCompanyForm() {
             <div className="flex items-center gap-3">
               <button
                 type="submit"
-                disabled={!isValid}
+                disabled={!isValid || isSubmitting}
                 className="btn-3d-primary gap-2 px-6 py-3 text-sm tracking-wide"
               >
                 <svg
@@ -584,7 +622,7 @@ function AddCompanyForm() {
                 >
                   <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
                 </svg>
-                Submit Company
+                {isSubmitting ? 'Submitting...' : 'Submit Company'}
               </button>
 
               <Link
