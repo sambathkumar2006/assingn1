@@ -11,7 +11,7 @@ node_modules
 dist
 dist-ssr
 *.local
-table-be/table-be/uploads/
+/table-be/
 
 # Editor directories and files
 .vscode/*
