@@ -19,6 +19,7 @@ import {
 const PAGE_LIMIT = 100
 
 const headers = [
+  { name: 'id', label: 'ID' },
   { name: 'company', label: 'Company', sortable: true },
   { name: 'contact', label: 'Contact', sortable: true },
   {
@@ -41,6 +42,21 @@ const headers = [
         </span>
       )
     },
+  },
+  {
+    name: 'logo',
+    label: 'Logo',
+    render: (item) =>
+      typeof item.logo === 'string' && item.logo.trim() ? (
+        <img
+          src={item.logo}
+          alt={`${item.company} logo`}
+          className="h-12 w-12 object-contain"
+          loading="lazy"
+        />
+      ) : (
+        '-'
+      ),
   },
 ]
 
@@ -114,4 +130,3 @@ function CompaniesPage() {
 }
 
 export default CompaniesPage
-

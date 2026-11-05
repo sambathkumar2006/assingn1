@@ -8,6 +8,7 @@ const COUNTRY_CODES = require('./countries');
 const PORT = 8080;
 const DATA_FILE = path.join(__dirname, 'data.json');
 const UPLOAD_DIR = path.join(__dirname, 'uploads');
+const UPLOAD_ROUTE = '/api/uploads';
 const SORTABLE_COLUMNS = ['company', 'contact', 'country'];
 const MAX_IMAGE_BYTES = 5 * 1024 * 1024;
 const PNG_SIGNATURE = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
@@ -27,6 +28,9 @@ const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: MAX
 
 // Let a frontend served from another origin (e.g. a Vite dev server) call the API.
 app.use(cors());
+// Uploaded logos are public at /api/uploads/{file}. Living under /api means a frontend dev-server proxy for /api
+// reaches them too.
+app.use(UPLOAD_ROUTE, express.static(UPLOAD_DIR));
 
 function toPositiveInt(value, fallback) {
   const n = Number.parseInt(value, 10);
@@ -52,14 +56,20 @@ function saveData(rows) {
   fs.renameSync(tmp, DATA_FILE);
 }
 
+// Rows store the logo's file name; responses turn it into an absolute URL. The host comes from the request, so the
+// URL points wherever the frontend reached the API: directly, or through a dev-server proxy.
+function withLogoUrl(req, row) {
+  return row.logo ? { ...row, logo: `${req.protocol}://${req.get('host')}${UPLOAD_ROUTE}/${row.logo}` } : row;
+}
+
 // GET /api?limit=10&page=1&sortCol=company&sortKey=asc&filter=apex
 //   limit    rows per page (default 100)
 //   page     1-based page number (default 1)
 //   sortCol  column to sort by: company | contact | country (default: data order)
 //   sortKey  sort direction: asc | desc (default asc)
 //   filter   case-insensitive substring match on company or contact
-// Responds with { rows: [{ id, company, contact, country, email }], total }, where total counts every row
-// matching the filter, not just this page.
+// Responds with { rows: [{ id, company, contact, country, email, logo? }], total }, where total counts every row
+// matching the filter, not just this page. logo is only on rows with an uploaded image: a URL to load it from.
 app.get('/api', (req, res) => {
   const limit = toPositiveInt(req.query.limit, 100);
   const page = toPositiveInt(req.query.page, 1);
@@ -77,15 +87,17 @@ app.get('/api', (req, res) => {
   }
 
   const start = (page - 1) * limit;
-  res.json({ rows: rows.slice(start, start + limit), total: rows.length });
+  const pageRows = rows.slice(start, start + limit).map((row) => withLogoUrl(req, row));
+  res.json({ rows: pageRows, total: rows.length });
 });
 
 // POST /api/submit as multipart/form-data
 //   company, contact  required text
 //   country           ISO 3166-1 alpha-3 code, e.g. USA (any case; stored uppercase)
 //   email             valid email address
-//   image             JPG or PNG file, max 5 MB; saved as uploads/{id}.png or uploads/{id}.jpg
-// Responds 201 with the new row, or 400 with { errors: { <field>: message } } for every invalid field.
+//   image             JPG or PNG file, max 5 MB; saved as uploads/{id}.png or .jpg and becomes the row's logo
+// Responds 201 with the new row (shaped like GET /api's rows), or 400 with { errors: { <field>: message } } for
+// every invalid field.
 app.post('/api/submit', upload.single('image'), (req, res) => {
   const body = req.body ?? {};
   const company = text(body.company);
@@ -109,11 +121,12 @@ app.post('/api/submit', upload.single('image'), (req, res) => {
   if (Object.keys(errors).length > 0) return res.status(400).json({ errors });
 
   const id = data.reduce((max, row) => Math.max(max, row.id), 0) + 1;
-  const row = { id, company, contact, country, email };
-  fs.writeFileSync(path.join(UPLOAD_DIR, `${id}.${extension}`), req.file.buffer);
+  const logo = `${id}.${extension}`;
+  const row = { id, company, contact, country, email, logo };
+  fs.writeFileSync(path.join(UPLOAD_DIR, logo), req.file.buffer);
   saveData([...data, row]);
   data.push(row);
-  res.status(201).json(row);
+  res.status(201).json(withLogoUrl(req, row));
 });
 
 // Multer rejects an oversized or unexpected file while parsing the form, before the handler above runs.

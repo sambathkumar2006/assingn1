@@ -26,7 +26,19 @@ export const fetchCompanies = createAsyncThunk(
       }
 
       const result = await response.json()
-      if (!Array.isArray(result.rows) || typeof result.total !== 'number') {
+      const validRows =
+        Array.isArray(result.rows) &&
+        result.rows.every(
+          (row) =>
+            row !== null &&
+            typeof row === 'object' &&
+            typeof row.id === 'number' &&
+            typeof row.company === 'string' &&
+            typeof row.contact === 'string' &&
+            typeof row.country === 'string' &&
+            (row.logo === undefined || typeof row.logo === 'string'),
+        )
+      if (!validRows || typeof result.total !== 'number') {
         return rejectWithValue('The companies API returned an invalid response.')
       }
 
