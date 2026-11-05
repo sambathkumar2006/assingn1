@@ -1,7 +1,13 @@
 import { useEffect, useRef, useState } from 'react'
+import { useDispatch, useSelector } from 'react-redux'
 import { Link } from 'react-router-dom'
 import useForm from '../hooks/useForm.js'
-import { API_BASE_URL } from '../utils/api.js'
+import {
+  clearCompanySubmission,
+  selectCompanySubmitError,
+  selectCompanySubmitStatus,
+  submitCompany,
+} from '../store/companiesSlice.js'
 import { countries, countryOptions } from '../utils/countries.js'
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
@@ -79,6 +85,7 @@ function formatFileSize(bytes) {
 }
 
 function AddCompanyForm() {
+  const dispatch = useDispatch()
   const cardRef = useRef(null)
   const fileInputRef = useRef(null)
 
@@ -86,9 +93,10 @@ function AddCompanyForm() {
   const { values, valuesSetter, errors, isValid, touched, setTouched, resetForm } =
     useForm(FORM_STRUCTURE)
 
-  const [submitted, setSubmitted] = useState(false)
-  const [isSubmitting, setIsSubmitting] = useState(false)
-  const [submitError, setSubmitError] = useState('')
+  const submitStatus = useSelector(selectCompanySubmitStatus)
+  const submitError = useSelector(selectCompanySubmitError)
+  const submitted = submitStatus === 'succeeded'
+  const isSubmitting = submitStatus === 'loading'
   const [previewUrl, setPreviewUrl] = useState(null)
   const [tilt, setTilt] = useState({ x: 0, y: 0 })
   const [glare, setGlare] = useState({ x: 50, y: 50, opacity: 0 })
@@ -128,8 +136,7 @@ function AddCompanyForm() {
 
   const handleInputChange = (field) => (event) => {
     valuesSetter(field, event.target.value)
-    setSubmitted(false)
-    setSubmitError('')
+    dispatch(clearCompanySubmission())
   }
 
   const handleBlur = (field) => () => {
@@ -140,8 +147,7 @@ function AddCompanyForm() {
     const file = event.target.files?.[0] || null
     valuesSetter('logo', file)
     setTouched((prev) => ({ ...prev, logo: true }))
-    setSubmitted(false)
-    setSubmitError('')
+    dispatch(clearCompanySubmission())
 
     if (previewUrl) {
       URL.revokeObjectURL(previewUrl)
@@ -164,12 +170,13 @@ function AddCompanyForm() {
     valuesSetter('logo', null)
     setTouched((prev) => ({ ...prev, logo: true }))
     setPreviewUrl(null)
-    setSubmitted(false)
-    setSubmitError('')
+    dispatch(clearCompanySubmission())
   }
 
-  const handleSubmit = async (event) => {
+  const handleSubmit = (event) => {
     event.preventDefault()
+
+    if (isSubmitting) return
 
     if (!isValid) {
       setTouched({
@@ -182,43 +189,15 @@ function AddCompanyForm() {
       return
     }
 
-    const formData = new FormData()
-    formData.append('company', values.company.trim())
-    formData.append('contact', values.contact.trim())
-    formData.append('country', values.country)
-    formData.append('email', values.email.trim())
-    formData.append('image', values.logo)
-
-    setIsSubmitting(true)
-    setSubmitError('')
-    setSubmitted(false)
-
-    try {
-      const response = await fetch(`${API_BASE_URL}/submit`, {
-        method: 'POST',
-        body: formData,
-      })
-      const result = await response.json()
-
-      if (!response.ok) {
-        const apiErrors = result?.errors
-        const message =
-          apiErrors && typeof apiErrors === 'object'
-            ? Object.values(apiErrors).filter((error) => typeof error === 'string').join('. ')
-            : ''
-        throw new Error(message || `Company submission failed (${response.status}).`)
-      }
-
-      setSubmitted(true)
-    } catch (error) {
-      setSubmitError(
-        error instanceof Error
-          ? error.message
-          : 'Unable to submit the company. Please try again.',
-      )
-    } finally {
-      setIsSubmitting(false)
-    }
+    dispatch(
+      submitCompany({
+        company: values.company.trim(),
+        contact: values.contact.trim(),
+        country: values.country,
+        email: values.email.trim(),
+        image: values.logo,
+      }),
+    )
   }
 
   const handleReset = () => {
@@ -230,8 +209,7 @@ function AddCompanyForm() {
       fileInputRef.current.value = ''
     }
     setPreviewUrl(null)
-    setSubmitted(false)
-    setSubmitError('')
+    dispatch(clearCompanySubmission())
   }
 
   return (
@@ -302,6 +280,12 @@ function AddCompanyForm() {
             className="mb-6 rounded-lg border border-red-300 bg-red-50 px-4 py-3 text-sm font-medium text-red-700"
           >
             {submitError}
+          </p>
+        )}
+
+        {isSubmitting && (
+          <p role="status" className="mb-6 text-sm font-medium text-blue-700">
+            Submitting company...
           </p>
         )}
 

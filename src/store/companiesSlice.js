@@ -45,6 +45,45 @@ export const fetchCompanies = createAsyncThunk(
   },
 )
 
+export const submitCompany = createAsyncThunk(
+  'companies/submitCompany',
+  async ({ company, contact, country, email, image }, { rejectWithValue }) => {
+    const formData = new FormData()
+    formData.append('company', company)
+    formData.append('contact', contact)
+    formData.append('country', country)
+    formData.append('email', email)
+    formData.append('image', image)
+
+    try {
+      const response = await fetch(`${API_BASE_URL}/submit`, {
+        method: 'POST',
+        body: formData,
+      })
+      const result = await response.json()
+
+      if (!response.ok) {
+        const apiErrors = result?.errors
+        const message =
+          apiErrors && typeof apiErrors === 'object'
+            ? Object.values(apiErrors).filter((error) => typeof error === 'string').join('. ')
+            : ''
+        return rejectWithValue(
+  message || `Company submission failed (${response.status}).`
+)
+      }
+
+      return result
+    } catch (error) {
+      return rejectWithValue(
+        error instanceof Error
+          ? `Unable to submit company: ${error.message}`
+          : 'Unable to submit company.',
+      )
+    }
+  },
+)
+
 const companiesSlice = createSlice({
   name: 'companies',
   initialState: {
@@ -55,8 +94,17 @@ const companiesSlice = createSlice({
     error: null,
     requestId: null,
     hasLoaded: false,
+    submitStatus: 'idle',
+    submitError: null,
   },
-  reducers: {},
+  reducers: {
+    clearCompanySubmission: (state) => {
+      if (state.submitStatus !== 'loading') {
+        state.submitStatus = 'idle'
+        state.submitError = null
+      }
+    },
+  },
   extraReducers: (builder) => {
     builder
       .addCase(fetchCompanies.pending, (state, action) => {
@@ -89,8 +137,22 @@ const companiesSlice = createSlice({
         state.error = action.payload ?? action.error.message
         state.requestId = null
       })
+      .addCase(submitCompany.pending, (state) => {
+        state.submitStatus = 'loading'
+        state.submitError = null
+      })
+      .addCase(submitCompany.fulfilled, (state) => {
+        state.submitStatus = 'succeeded'
+        state.submitError = null
+      })
+      .addCase(submitCompany.rejected, (state, action) => {
+        state.submitStatus = 'failed'
+        state.submitError = action.payload ?? action.error.message
+      })
   },
 })
+
+export const { clearCompanySubmission } = companiesSlice.actions
 
 const selectCompaniesState = (state) => state.companies
 
@@ -104,5 +166,7 @@ export const selectCompaniesError = (state) => state.companies.error
 export const selectCompaniesLoaded = (state) => state.companies.hasLoaded
 export const selectCompaniesPage = (state) => state.companies.page
 export const selectCompaniesTotal = (state) => state.companies.total
+export const selectCompanySubmitStatus = (state) => state.companies.submitStatus
+export const selectCompanySubmitError = (state) => state.companies.submitError
 
 export default companiesSlice.reducer
