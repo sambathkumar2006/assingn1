@@ -13,6 +13,7 @@ function Table({
   isLoading,
   error,
   onLoadMore,
+  onEdit,
 }) {
   const sentinelRef = useInfiniteScroll({
     hasMore,
@@ -121,6 +122,9 @@ function Table({
                   )}
                 </th>
               ))}
+              <th scope="col" className="px-6 py-4">
+                Action
+              </th>
             </tr>
           </thead>
 
@@ -128,7 +132,7 @@ function Table({
             {data.length === 0 ? (
               <tr>
                 <td
-                  colSpan={headers.length}
+                  colSpan={headers.length + 1}
                   className="px-6 py-8 text-center text-slate-600"
                 >
                   {isLoading ? 'Loading companies...' : 'No matching companies found.'}
@@ -148,6 +152,35 @@ function Table({
                       {header.render ? header.render(item) : item[header.name]}
                     </td>
                   ))}
+                  <td className="px-6 py-4">
+                    <button
+                      type="button"
+                      onClick={() => onEdit(item)}
+                      title={`Edit ${item.company || 'company'}`}
+                      aria-label={`Edit ${item.company || 'company'}`}
+                      className="inline-flex h-9 w-9 items-center justify-center rounded-lg text-slate-600 transition-colors hover:bg-blue-50 hover:text-blue-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+                    >
+                      <svg
+                        aria-hidden="true"
+                        className="h-4 w-4"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          d="m16.862 4.487 2.651 2.651M7.5 16.5l4.25-.85 8.114-8.114a1.875 1.875 0 0 0-2.652-2.652L9.1 13l-.85 3.5Z"
+                        />
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          d="M19.5 13.5v5.25A2.25 2.25 0 0 1 17.25 21H6.75a2.25 2.25 0 0 1-2.25-2.25V8.25A2.25 2.25 0 0 1 6.75 6H12"
+                        />
+                      </svg>
+                    </button>
+                  </td>
                 </tr>
               ))
             )}
@@ -155,7 +188,7 @@ function Table({
           <tfoot>
             <tr>
               <td
-                colSpan={headers.length}
+                colSpan={headers.length + 1}
                 className="px-6 py-4 text-center text-slate-600 border-t border-slate-200"
               >
                 {isLoading && hasMore ? (
@@ -209,6 +242,7 @@ Table.propTypes = {
   isLoading: PropTypes.bool.isRequired,
   error: PropTypes.string,
   onLoadMore: PropTypes.func.isRequired,
+  onEdit: PropTypes.func.isRequired,
 }
 
 export default Table

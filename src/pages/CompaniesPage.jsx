@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useDispatch, useSelector } from 'react-redux'
+import CompanyEditDrawer from '../components/CompanyEditDrawer.jsx'
 import Table from '../components/Table.jsx'
 import {
   fetchCompanies,
@@ -70,6 +71,8 @@ function CompaniesPage() {
   const total = useSelector(selectCompaniesTotal)
   const [searchText, setSearchText] = useState('')
   const [sort, setSort] = useState(null)
+  const [editingCompany, setEditingCompany] = useState(null)
+  const closeEditDrawer = useCallback(() => setEditingCompany(null), [])
 
   const requestOptions = useMemo(
     () => ({
@@ -114,18 +117,28 @@ function CompaniesPage() {
   }
 
   return (
-    <Table
-      headers={headers}
-      data={visibleData}
-      searchText={searchText}
-      onSearchTextChange={setSearchText}
-      sort={sort}
-      onSortChange={setSort}
-      hasMore={data.length < total}
-      isLoading={status === 'loading'}
-      error={error}
-      onLoadMore={loadMore}
-    />
+    <>
+      <Table
+        headers={headers}
+        data={visibleData}
+        searchText={searchText}
+        onSearchTextChange={setSearchText}
+        sort={sort}
+        onSortChange={setSort}
+        hasMore={data.length < total}
+        isLoading={status === 'loading'}
+        error={error}
+        onLoadMore={loadMore}
+        onEdit={setEditingCompany}
+      />
+      {editingCompany && (
+        <CompanyEditDrawer
+          key={editingCompany.id}
+          company={editingCompany}
+          onClose={closeEditDrawer}
+        />
+      )}
+    </>
   )
 }
 

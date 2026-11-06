@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useDispatch, useSelector } from 'react-redux'
 import { Link } from 'react-router-dom'
 import useForm from '../hooks/useForm.js'
@@ -67,6 +67,7 @@ const FORM_STRUCTURE = [
     validations: [
       (value) => {
         if (!value) return 'Company logo is required.'
+        if (typeof value === 'string') return ''
         const isTypeValid = VALID_LOGO_TYPES.includes(value.type)
         const isExtValid = VALID_LOGO_EXTENSIONS.test(value.name)
         if (!isTypeValid && !isExtValid) {
@@ -84,22 +85,35 @@ function formatFileSize(bytes) {
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
 }
 
-function AddCompanyForm() {
+function AddCompanyForm({ initialValues = {}, onSubmit }) {
   const dispatch = useDispatch()
   const cardRef = useRef(null)
   const fileInputRef = useRef(null)
+  const isEdit = typeof onSubmit === 'function'
 
-  // Use the custom useForm hook
+  const formStructure = useMemo(
+    () =>
+      FORM_STRUCTURE.map((field) => ({
+        ...field,
+        initialValue:
+          initialValues[field.id] === undefined
+            ? field.initialValue
+            : initialValues[field.id],
+      })),
+    [initialValues],
+  )
   const { values, valuesSetter, errors, isValid, touched, setTouched, resetForm } =
-    useForm(FORM_STRUCTURE)
+    useForm(formStructure)
 
   const submitStatus = useSelector(selectCompanySubmitStatus)
   const submitError = useSelector(selectCompanySubmitError)
-  const submitted = submitStatus === 'succeeded'
-  const isSubmitting = submitStatus === 'loading'
+  const submitted = !isEdit && submitStatus === 'succeeded'
+  const isSubmitting = !isEdit && submitStatus === 'loading'
   const [previewUrl, setPreviewUrl] = useState(null)
   const [tilt, setTilt] = useState({ x: 0, y: 0 })
   const [glare, setGlare] = useState({ x: 50, y: 50, opacity: 0 })
+  const logoPreviewUrl =
+    previewUrl || (typeof values.logo === 'string' ? values.logo : null)
 
   // Clean up object URL on unmount
   useEffect(() => {
@@ -136,7 +150,7 @@ function AddCompanyForm() {
 
   const handleInputChange = (field) => (event) => {
     valuesSetter(field, event.target.value)
-    dispatch(clearCompanySubmission())
+    if (!isEdit) dispatch(clearCompanySubmission())
   }
 
   const handleBlur = (field) => () => {
@@ -147,7 +161,7 @@ function AddCompanyForm() {
     const file = event.target.files?.[0] || null
     valuesSetter('logo', file)
     setTouched((prev) => ({ ...prev, logo: true }))
-    dispatch(clearCompanySubmission())
+    if (!isEdit) dispatch(clearCompanySubmission())
 
     if (previewUrl) {
       URL.revokeObjectURL(previewUrl)
@@ -170,7 +184,7 @@ function AddCompanyForm() {
     valuesSetter('logo', null)
     setTouched((prev) => ({ ...prev, logo: true }))
     setPreviewUrl(null)
-    dispatch(clearCompanySubmission())
+    if (!isEdit) dispatch(clearCompanySubmission())
   }
 
   const handleSubmit = (event) => {
@@ -189,15 +203,20 @@ function AddCompanyForm() {
       return
     }
 
-    dispatch(
-      submitCompany({
-        company: values.company.trim(),
-        contact: values.contact.trim(),
-        country: values.country,
-        email: values.email.trim(),
-        image: values.logo,
-      }),
-    )
+    const submission = {
+      company: values.company.trim(),
+      contact: values.contact.trim(),
+      country: values.country,
+      email: values.email.trim(),
+      logo: values.logo,
+    }
+
+    if (isEdit) {
+      onSubmit(submission)
+      return
+    }
+
+    dispatch(submitCompany({ ...submission, image: submission.logo }))
   }
 
   const handleReset = () => {
@@ -209,29 +228,35 @@ function AddCompanyForm() {
       fileInputRef.current.value = ''
     }
     setPreviewUrl(null)
-    dispatch(clearCompanySubmission())
+    if (!isEdit) dispatch(clearCompanySubmission())
   }
 
   return (
-    <div className="card-3d-wrapper">
+    <div className={isEdit ? '' : 'card-3d-wrapper'}>
       <div
         ref={cardRef}
-        onMouseMove={handleMouseMove}
-        onMouseLeave={handleMouseLeave}
-        style={{
-          transform: `perspective(1200px) rotateX(${tilt.x}deg) rotateY(${tilt.y}deg)`,
-        }}
-        className="card-3d p-6 sm:p-10"
+        onMouseMove={isEdit ? undefined : handleMouseMove}
+        onMouseLeave={isEdit ? undefined : handleMouseLeave}
+        style={
+          isEdit
+            ? undefined
+            : {
+                transform: `perspective(1200px) rotateX(${tilt.x}deg) rotateY(${tilt.y}deg)`,
+              }
+        }
+        className={isEdit ? 'p-6 sm:p-8' : 'card-3d p-6 sm:p-10'}
       >
         {/* Subtle 3D Specular Glare Layer */}
-        <div
-          aria-hidden="true"
-          className="pointer-events-none absolute inset-0 rounded-[1.25rem] transition-opacity duration-300"
-          style={{
-            background: `radial-gradient(circle at ${glare.x}% ${glare.y}%, rgba(255, 255, 255, 0.45) 0%, rgba(255, 255, 255, 0) 65%)`,
-            opacity: glare.opacity,
-          }}
-        />
+        {!isEdit && (
+          <div
+            aria-hidden="true"
+            className="pointer-events-none absolute inset-0 rounded-[1.25rem] transition-opacity duration-300"
+            style={{
+              background: `radial-gradient(circle at ${glare.x}% ${glare.y}%, rgba(255, 255, 255, 0.45) 0%, rgba(255, 255, 255, 0) 65%)`,
+              opacity: glare.opacity,
+            }}
+          />
+        )}
 
         {/* 3D Success Alert */}
         {submitted && (
@@ -274,7 +299,7 @@ function AddCompanyForm() {
           </div>
         )}
 
-        {submitError && (
+        {!isEdit && submitError && (
           <p
             role="alert"
             className="mb-6 rounded-lg border border-red-300 bg-red-50 px-4 py-3 text-sm font-medium text-red-700"
@@ -546,7 +571,7 @@ function AddCompanyForm() {
                   name="logo"
                   ref={fileInputRef}
                   type="file"
-                  required
+                  required={!isEdit || !values.logo}
                   accept=".jpg,.jpeg,.png,image/jpeg,image/png"
                   onChange={handleLogoChange}
                   onBlur={handleBlur('logo')}
@@ -562,19 +587,23 @@ function AddCompanyForm() {
             )}
 
             {/* 3D Floating Thumbnail Preview */}
-            {previewUrl && values.logo && (
+            {logoPreviewUrl && values.logo && (
               <div className="preview-3d mt-4 flex items-center gap-4 p-3.5">
                 <img
-                  src={previewUrl}
-                  alt="Logo preview"
+                  src={logoPreviewUrl}
+                  alt={isEdit && typeof values.logo === 'string' ? 'Current company logo' : 'Logo preview'}
                   className="h-14 w-14 rounded-lg border border-slate-200 bg-slate-50 object-cover shadow-inner"
                 />
                 <div className="min-w-0 flex-1">
                   <p className="truncate text-sm font-bold text-slate-800">
-                    {values.logo.name}
+                    {typeof values.logo === 'string'
+                      ? 'Current company logo'
+                      : values.logo.name}
                   </p>
                   <p className="text-xs font-medium text-slate-500">
-                    {formatFileSize(values.logo.size)} • {values.logo.type || 'image'}
+                    {typeof values.logo === 'string'
+                      ? 'Upload a new image to replace it'
+                      : `${formatFileSize(values.logo.size)} • ${values.logo.type || 'image'}`}
                   </p>
                 </div>
                 <button
@@ -589,7 +618,13 @@ function AddCompanyForm() {
           </div>
 
           {/* Form 3D Action Controls */}
-          <div className="flex flex-col gap-4 pt-6 sm:flex-row sm:items-center sm:justify-between border-t border-slate-200">
+          <div
+            className={`flex flex-col gap-4 border-t border-slate-200 pt-6 sm:flex-row sm:items-center sm:justify-between ${
+              isEdit
+                ? 'sticky bottom-0 z-10 -mx-6 bg-slate-100 px-6 pb-2 sm:-mx-8 sm:px-8'
+                : ''
+            }`}
+          >
             <div className="flex items-center gap-3">
               <button
                 type="submit"
@@ -606,15 +641,21 @@ function AddCompanyForm() {
                 >
                   <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
                 </svg>
-                {isSubmitting ? 'Submitting...' : 'Submit Company'}
+                {isSubmitting
+                  ? 'Submitting...'
+                  : isEdit
+                    ? 'Submit'
+                    : 'Submit Company'}
               </button>
 
-              <Link
-                to="/"
-                className="btn-3d-secondary px-5 py-3 text-sm"
-              >
-                Cancel
-              </Link>
+              {!isEdit && (
+                <Link
+                  to="/"
+                  className="btn-3d-secondary px-5 py-3 text-sm"
+                >
+                  Cancel
+                </Link>
+              )}
             </div>
 
             {!isValid && (
