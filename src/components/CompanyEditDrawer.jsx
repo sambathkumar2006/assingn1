@@ -1,8 +1,16 @@
-import { useEffect, useMemo, useRef } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import { useDispatch } from 'react-redux'
 import AddCompanyForm from './AddCompanyForm.jsx'
+import {
+  clearCompanyEdit,
+  editCompany,
+} from '../store/companiesSlice.js'
 
 function CompanyEditDrawer({ company, onClose }) {
+  const dispatch = useDispatch()
   const closeButtonRef = useRef(null)
+  const closeTimerRef = useRef(null)
+  const [successMessage, setSuccessMessage] = useState('')
   const initialValues = useMemo(
     () => ({
       company: company.company ?? '',
@@ -15,6 +23,15 @@ function CompanyEditDrawer({ company, onClose }) {
     }),
     [company],
   )
+
+  useEffect(() => {
+    dispatch(clearCompanyEdit())
+    return () => {
+      if (closeTimerRef.current) {
+        window.clearTimeout(closeTimerRef.current)
+      }
+    }
+  }, [dispatch])
 
   useEffect(() => {
     const previousOverflow = document.body.style.overflow
@@ -36,8 +53,21 @@ function CompanyEditDrawer({ company, onClose }) {
     }
   }, [onClose])
 
-  const handleSubmit = (values) => {
-    console.log(values)
+  const handleSubmit = async (values) => {
+    const formData = new FormData()
+    formData.append('company', values.company)
+    formData.append('contact', values.contact)
+    formData.append('country', values.country)
+    formData.append('email', values.email)
+    if (values.logo instanceof File) {
+      formData.append('image', values.logo)
+    }
+
+    const result = await dispatch(editCompany({ id: company.id, formData }))
+    if (editCompany.fulfilled.match(result)) {
+      setSuccessMessage('Company updated successfully.')
+      closeTimerRef.current = window.setTimeout(onClose, 1000)
+    }
   }
 
   return (
@@ -53,6 +83,14 @@ function CompanyEditDrawer({ company, onClose }) {
         aria-labelledby="edit-company-title"
         className="flex h-full w-full max-w-xl flex-col bg-slate-100 shadow-2xl"
       >
+        {successMessage && (
+          <p
+            role="status"
+            className="absolute right-6 top-20 z-10 rounded-lg border border-emerald-300 bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-800 shadow-lg"
+          >
+            {successMessage}
+          </p>
+        )}
         <header className="flex shrink-0 items-start justify-between border-b border-slate-200 bg-white px-5 py-4 sm:px-7">
           <div>
             <p className="badge-3d mb-2">Company details</p>

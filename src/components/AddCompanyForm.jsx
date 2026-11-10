@@ -4,6 +4,8 @@ import { Link } from 'react-router-dom'
 import useForm from '../hooks/useForm.js'
 import {
   clearCompanySubmission,
+  selectCompanyEditError,
+  selectCompanyEditStatus,
   selectCompanySubmitError,
   selectCompanySubmitStatus,
   submitCompany,
@@ -99,16 +101,23 @@ function AddCompanyForm({ initialValues = {}, onSubmit }) {
           initialValues[field.id] === undefined
             ? field.initialValue
             : initialValues[field.id],
+        validations:
+          isEdit && field.id === 'logo'
+            ? (value) => (value ? field.validations[0](value) : '')
+            : field.validations,
       })),
-    [initialValues],
+    [initialValues, isEdit],
   )
   const { values, valuesSetter, errors, isValid, touched, setTouched, resetForm } =
     useForm(formStructure)
 
   const submitStatus = useSelector(selectCompanySubmitStatus)
   const submitError = useSelector(selectCompanySubmitError)
+  const editError = useSelector(selectCompanyEditError)
+  const editStatus = useSelector(selectCompanyEditStatus)
   const submitted = !isEdit && submitStatus === 'succeeded'
-  const isSubmitting = !isEdit && submitStatus === 'loading'
+  const isSubmitting = isEdit ? editStatus === 'loading' : submitStatus === 'loading'
+  const isEditComplete = isEdit && editStatus === 'succeeded'
   const [previewUrl, setPreviewUrl] = useState(null)
   const [tilt, setTilt] = useState({ x: 0, y: 0 })
   const [glare, setGlare] = useState({ x: 50, y: 50, opacity: 0 })
@@ -190,7 +199,7 @@ function AddCompanyForm({ initialValues = {}, onSubmit }) {
   const handleSubmit = (event) => {
     event.preventDefault()
 
-    if (isSubmitting) return
+    if (isSubmitting || isEditComplete) return
 
     if (!isValid) {
       setTouched({
@@ -305,6 +314,15 @@ function AddCompanyForm({ initialValues = {}, onSubmit }) {
             className="mb-6 rounded-lg border border-red-300 bg-red-50 px-4 py-3 text-sm font-medium text-red-700"
           >
             {submitError}
+          </p>
+        )}
+
+        {isEdit && editError && (
+          <p
+            role="alert"
+            className="mb-6 rounded-lg border border-red-300 bg-red-50 px-4 py-3 text-sm font-medium text-red-700"
+          >
+            {editError}
           </p>
         )}
 
@@ -628,7 +646,7 @@ function AddCompanyForm({ initialValues = {}, onSubmit }) {
             <div className="flex items-center gap-3">
               <button
                 type="submit"
-                disabled={!isValid || isSubmitting}
+                disabled={!isValid || isSubmitting || isEditComplete}
                 className="btn-3d-primary gap-2 px-6 py-3 text-sm tracking-wide"
               >
                 <svg

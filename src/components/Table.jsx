@@ -141,7 +141,7 @@ function Table({
             ) : (
               data.map((item, index) => (
                 <tr
-                  key={item.company ?? index}
+                  key={item.id ?? item.company ?? index}
                   className="transition-colors hover:bg-slate-50/80"
                 >
                   {headers.map((header) => (
