@@ -5,7 +5,7 @@ export const fetchCompanies = createAsyncThunk(
   'companies/fetchCompanies',
   async (
     { filter = '', sortCol, sortKey, page = 1, limit = 100 } = {},
-    { rejectWithValue },
+    { rejectWithValue, signal },
   ) => {
     try {
       const params = new URLSearchParams()
@@ -20,7 +20,10 @@ export const fetchCompanies = createAsyncThunk(
       }
 
       const query = params.toString()
-      const response = await fetch(query ? `${API_BASE_URL}?${query}` : API_BASE_URL)
+      const response = await fetch(
+        query ? `${API_BASE_URL}?${query}` : API_BASE_URL,
+        { signal },
+      )
       if (!response.ok) {
         return rejectWithValue(`Request failed with status ${response.status}`)
       }
@@ -44,6 +47,10 @@ export const fetchCompanies = createAsyncThunk(
 
       return { rows: result.rows, total: result.total }
     } catch (error) {
+      if (signal.aborted) {
+        throw error
+      }
+
       return rejectWithValue(
         error instanceof Error
           ? `Unable to load company data: ${error.message}`
@@ -200,8 +207,10 @@ const companiesSlice = createSlice({
           return
         }
 
-        state.status = 'failed'
-        state.error = action.payload ?? action.error.message
+        state.status = action.meta.aborted ? 'idle' : 'failed'
+        state.error = action.meta.aborted
+          ? null
+          : action.payload ?? action.error.message
         state.requestId = null
       })
       .addCase(submitCompany.pending, (state) => {

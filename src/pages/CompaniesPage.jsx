@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useDispatch, useSelector } from 'react-redux'
 import CompanyEditDrawer from '../components/CompanyEditDrawer.jsx'
 import Table from '../components/Table.jsx'
@@ -70,18 +70,40 @@ function CompaniesPage() {
   const page = useSelector(selectCompaniesPage)
   const total = useSelector(selectCompaniesTotal)
   const [searchText, setSearchText] = useState('')
+  const [debouncedSearchText, setDebouncedSearchText] = useState('')
   const [sort, setSort] = useState(null)
   const [editingCompany, setEditingCompany] = useState(null)
+  const activeRequestRef = useRef(null)
   const closeEditDrawer = useCallback(() => setEditingCompany(null), [])
+
+  useEffect(() => {
+    if (searchText === debouncedSearchText) {
+      return undefined
+    }
+
+    const timeoutId = window.setTimeout(() => {
+      setDebouncedSearchText(searchText)
+    }, 3000)
+
+    return () => window.clearTimeout(timeoutId)
+  }, [debouncedSearchText, searchText])
 
   const requestOptions = useMemo(
     () => ({
-      filter: searchText,
+      filter: debouncedSearchText,
       sortCol: sort?.column,
       sortKey: sort?.direction,
       limit: PAGE_LIMIT,
     }),
-    [searchText, sort],
+    [debouncedSearchText, sort],
+  )
+
+  const requestCompanies = useCallback(
+    (options) => {
+      activeRequestRef.current?.abort()
+      activeRequestRef.current = dispatch(fetchCompanies(options))
+    },
+    [dispatch],
   )
 
   const visibleData = useMemo(() => {
@@ -99,14 +121,19 @@ function CompaniesPage() {
   }, [data, sort])
 
   useEffect(() => {
-    dispatch(fetchCompanies({ ...requestOptions, page: 1 }))
-  }, [dispatch, requestOptions])
+    requestCompanies({ ...requestOptions, page: 1 })
+  }, [requestCompanies, requestOptions])
+
+  useEffect(
+    () => () => activeRequestRef.current?.abort(),
+    [],
+  )
 
   const loadMore = useCallback(() => {
     if (status !== 'loading' && data.length < total) {
-      dispatch(fetchCompanies({ ...requestOptions, page: page + 1 }))
+      requestCompanies({ ...requestOptions, page: page + 1 })
     }
-  }, [data.length, dispatch, page, requestOptions, status, total])
+  }, [data.length, page, requestCompanies, requestOptions, status, total])
 
   if (!hasLoaded && status !== 'failed') {
     return <p className="p-8 text-slate-600" role="status">Loading companies...</p>
